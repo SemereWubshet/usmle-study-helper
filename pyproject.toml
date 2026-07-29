@@ -1,0 +1,19 @@
+[project]
+name = "usmle-study-helper"
+version = "0.1.0"
+description = "Local USMLE Step 1 practice tool backed by the user's own Gemini Notebook account."
+requires-python = ">=3.10"
+dependencies = [
+    "streamlit>=1.38",
+    "pypdf>=4.3",
+    "pandas>=2.2",
+    "notebooklm-py",
+    "pydantic>=2",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]
+pythonpath = ["src"]
