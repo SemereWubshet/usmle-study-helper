@@ -1,61 +1,80 @@
-# USMLE Study Helper
+# USMLE Step 1 AI Practice Platform
 
-A local, single-user Streamlit tool that turns your own medical PDFs (textbooks, notes) into NBME-style USMLE Step 1 practice questions — graded, with per-distractor explanations and a running accuracy history.
+A local-first, full-stack web app for USMLE Step 1 practice. It serves board-style
+multiple-choice questions from a standardized medical dataset (Hugging Face
+`medmcqa`) stored locally in SQLite, with instant rationales, a strikethrough
+reasoning tool, and progress analytics.
 
-Question generation is powered by **your own Gemini Notebook (NotebookLM) account** via the unofficial [`notebooklm-py`](https://github.com/teng-lin/notebooklm-py) client. Uploaded books become a persistent notebook, each ~50-page section a named source; a local SQLite registry ensures a book is never re-uploaded and a source never duplicated across restarts. No cloud backend of its own — all history lives in a local `usmle_app.db`.
+Built per [`plans/my_plan.md`](plans/my_plan.md).
 
-## Project layout
+## Architecture
 
 ```
-src/                  # all application code
-  app.py              # Streamlit UI (sidebar, quiz workspace, history tab)
-  pdf_engine.py       # pure PDF extraction + chunking
-  registry.py         # SQLite book->notebook / chunk->source mapping
-  notebook_engine.py  # the only module that talks to notebooklm-py
-  quiz_state.py       # quiz-taking state machine (submit/grade/explain/next)
-  init_db.py          # creates usmle_app.db tables (idempotent)
-  tests/              # pytest suite
-pyproject.toml        # deps (managed with uv)
-plan.md / specs.md    # architecture (plan.md wins) and original spec
+backend/    FastAPI + SQLite REST API  (http://localhost:8000)
+frontend/   React + TypeScript + Vite + Tailwind + shadcn-style UI  (http://localhost:5173)
 ```
 
-## Setup
+- **Backend** — FastAPI serving `/api/v1/*`. Pure `sqlite3` (no ORM needed),
+  Pydantic v2 request/response models. `bank_questions` holds the seeded question
+  bank; `user_history` records every answered question for analytics.
+- **Frontend** — SPA with three screens: Dashboard/Setup, Interactive Quiz, and
+  Analytics. TanStack Query for server state, React Router for navigation.
+- **Seed pipeline** — `backend/scripts/seed_db.py` downloads the `medmcqa`
+  parquet from Hugging Face, normalizes it into `bank_questions`, maps
+  `subject_name → discipline_tag`, and derives an organ-system `system_tag` with a
+  keyword heuristic (the dataset has no organ-system field).
 
-1. **Install dependencies** (from the repo root):
-   ```bash
-   uv sync
-   ```
+## Prerequisites
 
-2. **Authenticate Gemini Notebook** — this is out-of-band and one-time. On a machine **with a real browser** (not a headless container):
-   ```bash
-   notebooklm login
-   ```
-   Then copy the resulting `storage_state.json` into `.notebooklm_session/` in this project:
-   ```
-   .notebooklm_session/storage_state.json
-   ```
-   This file is a secret and is gitignored — never commit it. To point elsewhere, set `NOTEBOOKLM_SESSION_PATH`.
+- Python 3.10+ with [`uv`](https://docs.astral.sh/uv/) (installed in the devcontainer)
+- Node 20+ / npm
 
-3. **Initialize the database** (safe to re-run):
-   ```bash
-   uv run python src/init_db.py
-   ```
+## Setup & Run
 
-## Run
+### 1. Backend
 
 ```bash
-uv run streamlit run src/app.py
+cd backend
+uv sync                                   # install dependencies
+uv run python scripts/seed_db.py          # download medmcqa + seed usmle_app.db (~6000 Qs)
+uv run uvicorn app.main:app --reload      # serve API on http://localhost:8000
 ```
 
-Run from the repo root so `usmle_app.db` and `.notebooklm_session/` resolve. In the app: upload a PDF → pick a section → choose a question count → **Generate questions** → take the quiz. Results and accuracy show up in the **History** tab.
+Seed options: `--limit N` (default 6000, balanced across disciplines) or `--all`
+(every valid row, ~183k). The 86 MB parquet is cached in `backend/.cache/`.
+
+### 2. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev                               # http://localhost:5173
+```
+
+The Vite dev server proxies `/api` → `http://localhost:8000`, so no CORS or env
+config is needed in development. For a non-proxied deployment set
+`VITE_API_BASE_URL`.
+
+## API
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| GET  | `/api/v1/meta/tags`           | Distinct systems / disciplines / datasets for filters |
+| POST | `/api/v1/quiz/batch`          | Random batch of questions matching optional filters |
+| POST | `/api/v1/quiz/submit-session` | Record a completed batch's answers, return the score |
+| GET  | `/api/v1/analytics/summary`   | Overall accuracy, per-system breakdown, recent sessions |
+
+Interactive docs at http://localhost:8000/docs.
 
 ## Tests
 
 ```bash
-uv run pytest
+cd backend && uv run pytest      # API + persistence tests
+cd frontend && npm run lint      # TypeScript type-check
 ```
 
 ## Notes
 
-- **Scope:** Phase 1 is Mode A only (upload → chunk → generate → quiz → log). The local question-bank "Mode B" is deferred.
-- **Secrets & local state:** `.notebooklm_session/` and `usmle_app.db` are gitignored.
+- The app is intentionally single-user with no auth; `user_history` is a local log.
+- An earlier, abandoned Streamlit + Gemini Notebook approach (`src/`, root
+  `pyproject.toml`) predates this plan and is no longer used.

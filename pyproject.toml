@@ -1,19 +1,22 @@
 [project]
 name = "usmle-study-helper"
 version = "0.1.0"
-description = "Local USMLE Step 1 practice tool backed by the user's own Gemini Notebook account."
-requires-python = ">=3.10"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Semere Wubshet", email = "80589097+SemereWubshet@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
 dependencies = [
-    "streamlit>=1.38",
-    "pypdf>=4.3",
-    "pandas>=2.2",
-    "notebooklm-py",
-    "pydantic>=2",
+    "datasets>=5.0.1",
+    "fastapi>=0.141.1",
+    "pydantic>=2.13.5",
+    "uvicorn[standard]>=0.52.4",
 ]
 
-[dependency-groups]
-dev = ["pytest>=8.0"]
+[project.scripts]
+usmle-study-helper = "usmle_study_helper:main"
 
-[tool.pytest.ini_options]
-testpaths = ["src/tests"]
-pythonpath = ["src"]
+[build-system]
+requires = ["uv_build>=0.12.6,<0.13.0"]
+build-backend = "uv_build"
