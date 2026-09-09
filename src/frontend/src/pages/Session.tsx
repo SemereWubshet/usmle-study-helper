@@ -85,116 +85,127 @@ export default function Session() {
     }
   }
 
-  if (isLoading) return <div className="min-h-screen bg-slate-950 p-6 flex items-center justify-center"><Skeleton className="h-64 w-full max-w-3xl bg-slate-900" /></div>
+  if (isLoading) {
+      return (
+        <div className="w-full flex items-center justify-center mt-12">
+          <Skeleton className="h-[400px] w-full max-w-4xl bg-slate-200 dark:bg-slate-800/50 rounded-2xl" />
+        </div>
+      )
+    }
 
   const options = [question?.opa, question?.opb, question?.opc, question?.opd]
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center p-6 space-y-6">
-        <header className="w-full max-w-3xl flex items-center justify-between border-b border-slate-800 pb-4">
-            <div className="flex items-center space-x-4">
-                <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/')}
-                className="text-slate-400 hover:text-white hover:bg-slate-800"
-                >
-                ← Quit Block
-                </Button>
-                <div>
-                <h1 className="text-xl font-bold text-white tracking-tight">Block {sessionData.session_id}</h1>
-                <p className="text-xs text-slate-400">Right-click to strike through</p>
-                </div>
-            </div>
-            <div className="flex space-x-3 text-sm">
-                <Badge variant="outline" className="text-slate-400 border-slate-800">
-                {Math.floor(timeSpent / 60)}:{(timeSpent % 60).toString().padStart(2, '0')}
-                </Badge>
-                <Badge className="bg-slate-900 text-white border-slate-800">
-                Question {currentIndex + 1} of {sessionData.question_ids.length}
-                </Badge>
-            </div>
-        </header>
+    <div className="w-full max-w-4xl mx-auto flex flex-col space-y-8 animate-in fade-in duration-500 mt-4">
+      
+      {/* Session Header */}
+      <header className="w-full flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800"
+          >
+            ← Dashboard
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Custom Session</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Right-click to strike through</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-3 text-sm">
+          <Badge variant="outline" className="px-3 py-1 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 bg-transparent">
+            {Math.floor(timeSpent / 60)}:{(timeSpent % 60).toString().padStart(2, '0')}
+          </Badge>
+          <Badge className="px-3 py-1 bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-none">
+            Question {currentIndex + 1} of {sessionData.question_ids.length}
+          </Badge>
+        </div>
+      </header>
 
-      <Card className="w-full max-w-3xl bg-slate-900 border-slate-800 shadow-xl">
-        <CardHeader className="space-y-2">
-          {question?.subject && <Badge className="w-fit bg-emerald-950 text-emerald-400 border border-emerald-800">{question.subject}</Badge>}
-          <CardTitle className="text-lg font-normal leading-relaxed text-slate-100 pt-2">
-            {question?.question}
-          </CardTitle>
-        </CardHeader>
+      {/* Main Question Card (Made wider and cleaner) */}
+    <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+        {/* ... Keep the CardHeader and everything inside exactly as it is ... */}
+      <CardHeader className="space-y-2">
+        {question?.subject && <Badge className="w-fit bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">{question.subject}</Badge>}
+        <CardTitle className="text-lg font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-2">
+          {question?.question}
+        </CardTitle>
+      </CardHeader>
 
-        <CardContent className="space-y-3">
-          {options.map((optText, idx) => {
-            const optionNumber = idx // 0-indexed to match dataset cop
-            const isSelected = selectedOption === optionNumber
-            const isStruck = struckOptions.includes(optionNumber)
+      <CardContent className="space-y-3">
+        {options.map((optText, idx) => {
+          const optionNumber = idx
+          const isSelected = selectedOption === optionNumber
+          const isStruck = struckOptions.includes(optionNumber)
 
-            let buttonStyle = 'border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800/80'
+          let buttonStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
 
-            if (attemptResult) {
-              if (optionNumber === attemptResult.correct_option) {
-                buttonStyle = 'border-emerald-500 bg-emerald-950/40 text-emerald-200'
-              } else if (isSelected && !attemptResult.is_correct) {
-                buttonStyle = 'border-red-500 bg-red-950/40 text-red-200'
-              } else {
-                buttonStyle = 'border-slate-800 bg-slate-950/40 text-slate-500 opacity-60'
-              }
-            } else if (isSelected) {
-              buttonStyle = 'border-blue-500 bg-blue-950/30 text-blue-200 ring-1 ring-blue-500'
+          if (attemptResult) {
+            if (optionNumber === attemptResult.correct_option) {
+              buttonStyle = 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 ring-1 ring-emerald-500'
+            } else if (isSelected && !attemptResult.is_correct) {
+              buttonStyle = 'border-red-500 bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200 ring-1 ring-red-500'
+            } else {
+              buttonStyle = 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 text-slate-400 dark:text-slate-500 opacity-60'
             }
+          } else if (isSelected) {
+            buttonStyle = 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-200 ring-1 ring-blue-500'
+          }
 
-            return (
-              <button
-                key={optionNumber}
-                type="button"
-                onClick={() => handleSelectOption(optionNumber)}
-                onContextMenu={(e) => handleToggleStrike(e, optionNumber)}
-                disabled={Boolean(attemptResult)}
-                className={`w-full text-left p-4 rounded-lg border transition-all flex items-start space-x-3 cursor-pointer select-none ${buttonStyle} ${
-                  isStruck && !attemptResult ? 'line-through opacity-40 text-slate-500' : ''
-                }`}
-              >
-                <span className="font-semibold text-xs tracking-wider uppercase mt-0.5 text-slate-400">
-                  {String.fromCharCode(65 + idx)}.
-                </span>
-                <span className="flex-1 text-sm leading-relaxed">{optText}</span>
-              </button>
-            )
-          })}
-        </CardContent>
+          return (
+            <button
+              key={optionNumber}
+              type="button"
+              onClick={() => handleSelectOption(optionNumber)}
+              onContextMenu={(e) => handleToggleStrike(e, optionNumber)}
+              disabled={Boolean(attemptResult)}
+              className={`w-full text-left p-4 rounded-lg border transition-all flex items-start space-x-3 cursor-pointer select-none ${buttonStyle} ${
+                isStruck && !attemptResult ? 'line-through opacity-40 text-slate-400 dark:text-slate-600' : ''
+              }`}
+            >
+              <span className="font-semibold text-xs tracking-wider uppercase mt-0.5 opacity-70">
+                {String.fromCharCode(65 + idx)}.
+              </span>
+              <span className="flex-1 text-sm leading-relaxed">{optText}</span>
+            </button>
+          )
+        })}
+      </CardContent>
 
-        <CardFooter className="flex justify-end border-t border-slate-800/80 pt-4">
+      <CardFooter className="flex justify-end border-t border-slate-100 dark:border-slate-800/80 pt-4">
           {!attemptResult ? (
             <Button onClick={handleSubmit} disabled={selectedOption === null || attemptMutation.isPending} className="bg-emerald-600 hover:bg-emerald-500 text-white">
               {attemptMutation.isPending ? 'Checking...' : 'Submit Answer'}
             </Button>
           ) : (
             <Button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 text-white">
-              {currentIndex + 1 >= sessionData.question_ids.length ? 'Finish Block' : 'Next Question →'}
+              {currentIndex + 1 >= sessionData.question_ids.length ? 'Finish Session' : 'Next Question →'}
             </Button>
           )}
         </CardFooter>
       </Card>
 
       {attemptResult && (
-        <Card className="w-full max-w-3xl bg-slate-900 border-slate-800 text-slate-200">
-          <CardHeader>
-            <div className="flex items-center space-x-2">
-              <span className={`text-sm font-semibold px-2.5 py-1 rounded ${attemptResult.is_correct ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-red-950 text-red-400 border-red-800'}`}>
-                {attemptResult.is_correct ? 'Correct' : 'Incorrect'}
-              </span>
-              <span className="text-sm text-slate-400">
-                Correct choice was ({String.fromCharCode(65 + attemptResult.correct_option)})
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed text-slate-400 whitespace-pre-wrap">
-              {attemptResult.explanation || 'No rationale provided.'}
-            </p>
-          </CardContent>
-        </Card>
+            <Card className="w-full max-w-3xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+              <CardHeader>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-sm font-semibold px-2.5 py-1 rounded ${attemptResult.is_correct ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800' : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800'}`}>
+                    {attemptResult.is_correct ? 'Correct' : 'Incorrect'}
+                  </span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                    Correct choice was ({String.fromCharCode(65 + attemptResult.correct_option)})
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                  {attemptResult.explanation || 'No rationale provided.'}
+                </p>
+              </CardContent>
+            </Card>
       )}
     </div>
   )

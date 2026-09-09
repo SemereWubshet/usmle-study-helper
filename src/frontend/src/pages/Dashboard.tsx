@@ -1,12 +1,26 @@
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { fetchDashboardStats, createSession } from '../api'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { Slider } from '@/components/ui/slider'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Activity, Target, Zap, Settings2, Play } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+
+// Helper to get local YYYY-MM-DD string
+const getLocalDateStr = (date: Date) => date.toLocaleDateString('en-CA')
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const [blockCount, setBlockCount] = useState([40])
+  
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['All Systems'])
+  const subjects = ['All Systems', 'Cardiology', 'Neurology', 'Renal', 'Respiratory', 'Anatomy']
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboardStats'],
@@ -14,77 +28,255 @@ export default function Dashboard() {
   })
 
   const sessionMutation = useMutation({
-    mutationFn: () => createSession("medmcqa", 40),
-    onSuccess: (data) => {
-      // Pass the session data directly to the Session route through memory
-      navigate('/session', { state: { sessionData: data } })
-    },
+    mutationFn: () => createSession("medmcqa", blockCount[0]),
+    onSuccess: (data) => navigate('/session', { state: { sessionData: data } }),
   })
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 space-y-6">
-        <Skeleton className="h-32 w-full max-w-2xl bg-slate-900 rounded-xl" />
-      </div>
-    )
+  const toggleSubject = (subject: string) => {
+    if (subject === 'All Systems') {
+      setSelectedSubjects(['All Systems'])
+      return
+    }
+    const newSubjects = selectedSubjects.filter(s => s !== 'All Systems')
+    if (newSubjects.includes(subject)) {
+      setSelectedSubjects(newSubjects.filter(s => s !== subject).length ? newSubjects.filter(s => s !== subject) : ['All Systems'])
+    } else {
+      setSelectedSubjects([...newSubjects, subject])
+    }
   }
 
+  // Calculate Real Data Metrics
+  const { todayAnswered, currentStreak, heatmapData } = useMemo(() => {
+    if (!stats?.recent_sessions) return { todayAnswered: 0, currentStreak: 0, heatmapData: Array(84).fill(0) }
+
+    const sessions = stats.recent_sessions
+    const today = new Date()
+    const todayStr = getLocalDateStr(today)
+    
+    // 1. Today's Answered
+    const todayTotal = sessions
+      .filter((s: any) => getLocalDateStr(new Date(s.created_at)) === todayStr)
+      .reduce((sum: number, s: any) => sum + s.questions_answered, 0)
+
+    // 2. Current Streak
+    const sessionDates = new Set(sessions.map((s: any) => getLocalDateStr(new Date(s.created_at))))
+    let streak = 0
+    let checkDate = new Date(today)
+    
+    // Streak is alive if they studied today OR yesterday
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    
+    if (sessionDates.has(todayStr) || sessionDates.has(getLocalDateStr(yesterday))) {
+      let activeDate = sessionDates.has(todayStr) ? new Date(today) : new Date(yesterday)
+      while (sessionDates.has(getLocalDateStr(activeDate))) {
+        streak++
+        activeDate.setDate(activeDate.getDate() - 1) // Walk backward one day
+      }
+    }
+
+    // 3. Consistency Heatmap (Last 84 Days)
+    const heatmap = Array.from({ length: 84 }).map((_, i) => {
+      const targetDate = new Date(today)
+      targetDate.setDate(targetDate.getDate() - (83 - i))
+      const targetStr = getLocalDateStr(targetDate)
+      
+      const dayTotal = sessions
+        .filter((s: any) => getLocalDateStr(new Date(s.created_at)) === targetStr)
+        .reduce((sum: number, s: any) => sum + s.questions_answered, 0)
+        
+      if (dayTotal === 0) return 0
+      if (dayTotal <= 10) return 1
+      if (dayTotal <= 25) return 2
+      return 3
+    })
+
+    return { todayAnswered: todayTotal, currentStreak: streak, heatmapData: heatmap }
+  }, [stats])
+
+  if (isLoading) return <div className="space-y-6"><Skeleton className="h-64 w-full rounded-3xl" /></div>
+
+  // Daily Goal Logic
+  const dailyGoal = 40
+  const progressPercent = Math.min((todayAnswered / dailyGoal) * 100, 100)
+  const isGoalMet = todayAnswered >= dailyGoal
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center py-12 px-4 space-y-8">
-      <header className="text-center space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight text-white">USMLE Study Engine</h1>
-        <p className="text-slate-400">Targeted blocks. Measurable progression.</p>
-      </header>
-
-      {/* Global Metrics */}
-      <div className="grid grid-cols-2 gap-4 w-full max-w-2xl">
-        <Card className="bg-slate-900 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Total Questions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{stats?.total_answered || 0}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-900 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Global Accuracy</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-emerald-400">{stats?.global_accuracy || 0}%</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Button 
-        onClick={() => sessionMutation.mutate()} 
-        disabled={sessionMutation.isPending}
-        className="w-full max-w-2xl h-14 text-lg bg-emerald-600 hover:bg-emerald-500 text-white"
-      >
-        {sessionMutation.isPending ? 'Generating Block...' : 'Start 40-Question Block'}
-      </Button>
-
-      {/* Session History */}
-      <div className="w-full max-w-2xl space-y-4">
-        <h3 className="text-lg font-semibold text-slate-300 border-b border-slate-800 pb-2">Recent Blocks</h3>
-        {stats?.recent_sessions?.length === 0 && (
-          <p className="text-slate-500 text-sm">No sessions completed yet.</p>
-        )}
-        <div className="space-y-3">
-          {stats?.recent_sessions?.map((session: any) => (
-            <div key={session.session_id} className="flex items-center justify-between p-4 rounded-lg bg-slate-900/50 border border-slate-800">
-              <div>
-                <div className="text-sm font-medium text-slate-200">Session #{session.session_id}</div>
-                <div className="text-xs text-slate-500">{new Date(session.created_at).toLocaleDateString()}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-bold text-emerald-400">{session.accuracy_percentage}%</div>
-                <div className="text-xs text-slate-500">{session.questions_answered} answered</div>
-              </div>
+    <div className="space-y-8 animate-in fade-in duration-700">
+      
+      {/* Daily Goal & Quick Actions */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="col-span-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-32 bg-emerald-500/5 blur-3xl rounded-full" />
+          <CardContent className="p-8 space-y-6 relative z-10">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Daily Target</h2>
+              <p className="text-slate-500">
+                {isGoalMet 
+                  ? "Outstanding. You have crushed your daily goal." 
+                  : `You are ${dailyGoal - todayAnswered} questions away from your daily goal.`}
+              </p>
             </div>
-          ))}
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm font-medium">
+                <span className="text-slate-700 dark:text-slate-300">{todayAnswered} Answered</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{dailyGoal} Goal</span>
+              </div>
+              <Progress value={progressPercent} className="h-3 bg-slate-100 dark:bg-slate-800" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center">
+          <CardContent className="p-6 space-y-4">
+            <Button 
+              onClick={() => { setBlockCount([40]); sessionMutation.mutate(); }}
+              disabled={sessionMutation.isPending}
+              className="w-full h-14 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Quick Start (40 Qs)
+            </Button>
+            
+            <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full h-14 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                    <Settings2 className="w-4 h-4 mr-2" />
+                    Custom Session
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px] p-6 sm:p-8 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl">
+                    <DialogHeader className="space-y-2 text-left">
+                    <DialogTitle className="text-2xl font-bold text-slate-900 dark:text-white">Configure Session</DialogTitle>
+                    <DialogDescription className="text-slate-500 dark:text-slate-400">
+                        Set up your targeted study parameters.
+                    </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-6 space-y-8">
+                    {/* Q-Bank Selector */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Question Bank</label>
+                        <select className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
+                        <option>medmcqa (Default)</option>
+                        </select>
+                    </div>
+
+                    {/* Block Size Input & Slider */}
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                        <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Block Size</label>
+                        <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-900 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
+                            <input 
+                            type="number" 
+                            min={1} 
+                            max={100}
+                            step={1}
+                            value={blockCount[0]}
+                            onChange={(e) => setBlockCount([Number(e.target.value) || 1])}
+                            className="w-12 text-center text-sm font-bold bg-transparent text-slate-900 dark:text-white outline-none"
+                            />
+                            <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Qs</span>
+                        </div>
+                        </div>
+                        <Slider 
+                        value={blockCount} 
+                        max={100} min={1} step={1}
+                        onValueChange={setBlockCount}
+                        className="py-2"
+                        />
+                    </div>
+
+                    {/* Target Systems Tags */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Target Systems</label>
+                        <div className="flex flex-wrap gap-2">
+                        {subjects.map(sub => (
+                            <Badge 
+                            key={sub} 
+                            variant={selectedSubjects.includes(sub) ? "default" : "outline"}
+                            className={`cursor-pointer px-3 py-1.5 transition-all duration-200 ${selectedSubjects.includes(sub) ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/20 border-transparent' : 'bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
+                            onClick={() => toggleSubject(sub)}
+                            >
+                            {sub}
+                            </Badge>
+                        ))}
+                        </div>
+                    </div>
+                    </div>
+
+                    <div className="pt-2">
+                        <Button 
+                            onClick={() => sessionMutation.mutate()} 
+                            disabled={sessionMutation.isPending}
+                            className="w-full h-14 text-lg rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02]"
+                        >
+                            {sessionMutation.isPending ? 'Generating...' : 'Generate & Start'}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+            
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Centered Stats Grid */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
+          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/50 rounded-2xl mb-4 text-blue-600 dark:text-blue-400">
+              <Target className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Answered</p>
+            <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats?.total_answered || 0}</h3>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
+          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 rounded-2xl mb-4 text-emerald-600 dark:text-emerald-400">
+              <Activity className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Global Accuracy</p>
+            <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats?.global_accuracy || 0}%</h3>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
+          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+            <div className="p-3 bg-orange-50 dark:bg-orange-950/50 rounded-2xl mb-4 text-orange-600 dark:text-orange-400">
+              <Zap className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Current Streak</p>
+            <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}</h3>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Consistency Heatmap */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200">Study Consistency</h3>
+          <span className="text-sm text-slate-500">Last 12 Weeks</span>
         </div>
-      </div>
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex flex-wrap gap-1.5 md:gap-2">
+              {heatmapData.map((intensity, i) => {
+                const colors = [
+                  'bg-slate-100 dark:bg-slate-800', 
+                  'bg-emerald-200 dark:bg-emerald-950/60', 
+                  'bg-emerald-400 dark:bg-emerald-800', 
+                  'bg-emerald-600 dark:bg-emerald-500'
+                ]
+                return <div key={i} className={`w-3 h-3 md:w-4 md:h-4 rounded-sm ${colors[intensity]} transition-colors hover:ring-2 hover:ring-slate-400`} />
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
     </div>
   )
 }
