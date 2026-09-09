@@ -11,7 +11,7 @@ cookies.json
 *.cert
 
 # Local SQLite state
-usmle.db
+*.db
 
 # Frontend (Node) and backend dataset cache
 node_modules/

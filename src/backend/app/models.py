@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
 
-
+# --- Question & Attempt Models ---
 class QuestionOut(BaseModel):
     id: str
     question: str
@@ -12,10 +12,10 @@ class QuestionOut(BaseModel):
     opd: str
     subject: Optional[str] = None
 
-
 class AttemptIn(BaseModel):
-    selected_option: int  # 1, 2, 3, or 4 (or 0-3 depending on choice mapping)
-
+    question_id: str
+    selected_option: int
+    time_spent_seconds: int  # New field for the Study Block engine
 
 class AttemptOut(BaseModel):
     question_id: str
@@ -24,8 +24,23 @@ class AttemptOut(BaseModel):
     is_correct: bool
     explanation: Optional[str] = None
 
+# --- Session Models ---
+class SessionCreate(BaseModel):
+    qbank_name: str = "medmcqa"
+    target_count: int = 40  # Standard USMLE block size
 
-class AnalyticsOut(BaseModel):
-    total_answered: int
-    total_correct: int
+class SessionOut(BaseModel):
+    session_id: int
+    question_ids: List[str]  # The frontend will use this queue to navigate the block
+
+# --- Dashboard Analytics Models ---
+class SessionSummary(BaseModel):
+    session_id: int
+    created_at: datetime
+    questions_answered: int
     accuracy_percentage: float
+
+class DashboardOut(BaseModel):
+    total_answered: int
+    global_accuracy: float
+    recent_sessions: List[SessionSummary]
