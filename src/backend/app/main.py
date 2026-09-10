@@ -19,56 +19,122 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/api/v1/sessions", response_model=SessionOut)
-def create_session(req: SessionCreate, db: sqlite3.Connection = Depends(get_db)):
-    """Generates a new study block and returns the queue of question IDs."""
+# The response_model here maps to your SessionOut class in models.py
+@app.post("/api/v1/sessions/", response_model=SessionOut)
+def create_session(request: SessionCreate, db: sqlite3.Connection = Depends(get_db)):
     cursor = db.cursor()
     
-    # 1. Create the session in the user profile
+    # Base query routes to the correct attached database alias using request.qbank
+    query = f"SELECT * FROM {request.qbank}.bank_questions"
+    params = []
+    conditions = []
+    scope_str = "All"
+    
+    # Filter out "All Systems" if passed by frontend
+    valid_subjects = [s for s in (request.subjects or []) if s != "All Systems"]
+    
+    # Dynamically build the WHERE clause based on the selected Q-Bank's filters
+    if request.qbank == "medmcqa" and valid_subjects:
+        placeholders = ",".join("?" for _ in valid_subjects)
+        conditions.append(f"subject IN ({placeholders})")
+        params.extend(valid_subjects)
+        scope_str = ", ".join(valid_subjects)
+        
+    elif request.qbank == "medqa_usmle" and request.exam_type:
+        conditions.append("exam_type = ?")
+        params.append(request.exam_type)
+        scope_str = request.exam_type
+        
+    # Safely inject the WHERE clause only if conditions exist
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+        
+    query += " ORDER BY RANDOM() LIMIT ?"
+    params.append(request.block_size)
+    
+    # Execute query
+    rows = cursor.execute(query, params).fetchall()
+    
+    if not rows:
+        raise HTTPException(status_code=400, detail="No questions match the selected filters.")
+        
+    # Create the session tracking record in the profile database
     cursor.execute(
-        """
-        INSERT INTO study_sessions (qbank_name, target_count)
-        VALUES (?, ?);
-        """,
-        (req.qbank_name, req.target_count)
+        "INSERT INTO study_sessions (qbank, scope) VALUES (?, ?)", 
+        (request.qbank, scope_str)
     )
     session_id = cursor.lastrowid
     
-    # 2. Select N random questions from the read-only cartridge
-    # (Prioritizing unseen questions first)
-    rows = cursor.execute(
-        """
-        SELECT id FROM qbank.bank_questions 
-        WHERE id NOT IN (SELECT question_id FROM session_attempts)
-        ORDER BY RANDOM() LIMIT ?;
-        """, 
-        (req.target_count,)
-    ).fetchall()
+    questions = []
+    question_ids = []
     
-    # Fallback if they exhausted the unseen pool
-    if len(rows) < req.target_count:
-        rows = cursor.execute(
-            "SELECT id FROM qbank.bank_questions ORDER BY RANDOM() LIMIT ?;",
-            (req.target_count,)
-        ).fetchall()
-
+    for r in rows:
+        # If your QuestionOut model uses a different ID field name, map it here
+        q_id = r["id"]
+        question_ids.append(q_id)
+        
+        # Packaging the flat database columns back into a list array
+        options = [r["opa"], r["opb"], r["opc"], r["opd"]]
+        
+        # QuestionOut mapping: Check these kwargs against your current models.py classes
+        # If you deleted 'split_name' or 'exam_type' from QuestionOut, remove them below.
+        questions.append(QuestionOut(
+            id=q_id,
+            question=r["question"],
+            options=options,
+            subject=r["subject"],
+            explanation=r["explanation"],
+            correct_text=r["correct_text"],
+            exam_type=r["exam_type"],
+            metamap_phrases=r["metamap_phrases"]
+        ))
+        
+        # Save the correct option mapping to validate future answer attempts
+        cursor.execute(
+            "INSERT INTO session_questions (session_id, question_id, correct_option) VALUES (?, ?, ?)",
+            (session_id, q_id, r["correct_option"])
+        )
+        
     db.commit()
+    
+    # SessionOut mapping: Check these kwargs against your current models.py class
+    # Used fields: session_id, qbank, question_ids, questions (List[QuestionOut])
     return SessionOut(
-        session_id=session_id,
-        question_ids=[row["id"] for row in rows]
+        session_id=session_id, 
+        qbank=request.qbank,
+        question_ids=question_ids, 
+        questions=questions
     )
 
 @app.get("/api/v1/questions/{question_id}", response_model=QuestionOut)
 def get_question(question_id: str, db: sqlite3.Connection = Depends(get_db)):
-    """Fetches a specific question by ID for the active session."""
-    row = db.cursor().execute(
-        "SELECT id, question, opa, opb, opc, opd, subject FROM qbank.bank_questions WHERE id = ?;",
+    """Fetches a specific question by ID from either cartridge for the active session."""
+    cursor = db.cursor()
+    
+    row = cursor.execute(
+        "SELECT * FROM medqa_usmle.bank_questions WHERE id = ?;", 
         (question_id,)
     ).fetchone()
     
     if not row:
+        row = cursor.execute(
+            "SELECT * FROM medmcqa.bank_questions WHERE id = ?;", 
+            (question_id,)
+        ).fetchone()
+        
+    if not row:
         raise HTTPException(status_code=404, detail="Question not found")
-    return dict(row)
+        
+    return QuestionOut(
+        id=row["id"],
+        question=row["question"],
+        options=[row["opa"], row["opb"], row["opc"], row["opd"]],
+        subject=row["subject"],
+        explanation=row["explanation"],
+        correct_text=row["correct_text"],
+        exam_type=row["exam_type"],
+        metamap_phrases=row["metamap_phrases"]
+    )
 
 @app.post("/api/v1/sessions/{session_id}/attempt", response_model=AttemptOut)
 def record_attempt(
@@ -76,17 +142,36 @@ def record_attempt(
 ):
     """Evaluates the answer, records time spent, and logs it to the specific session."""
     cursor = db.cursor()
+    
+    # 1. Identify which qbank this session belongs to
+    session_row = cursor.execute(
+        "SELECT qbank FROM study_sessions WHERE id = ?;", (session_id,)
+    ).fetchone()
+    if not session_row:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    qbank = session_row["qbank"] or "medqa_usmle"
+    
+    # 2. Fetch answer details from that qbank (with fallback)
     row = cursor.execute(
-        "SELECT correct_option, explanation FROM qbank.bank_questions WHERE id = ?;",
+        f"SELECT correct_option, explanation FROM {qbank}.bank_questions WHERE id = ?;",
         (attempt.question_id,)
     ).fetchone()
-
+    
+    if not row:
+        other_bank = "medmcqa" if qbank == "medqa_usmle" else "medqa_usmle"
+        row = cursor.execute(
+            f"SELECT correct_option, explanation FROM {other_bank}.bank_questions WHERE id = ?;",
+            (attempt.question_id,)
+        ).fetchone()
+        
     if not row:
         raise HTTPException(status_code=404, detail="Question not found")
 
     correct_option = int(row["correct_option"])
     is_correct = (attempt.selected_option == correct_option)
 
+    # 3. Record the attempt
     cursor.execute(
         """
         INSERT INTO session_attempts 
@@ -107,10 +192,10 @@ def record_attempt(
 
 @app.get("/api/v1/analytics/dashboard", response_model=DashboardOut)
 def get_dashboard_stats(db: sqlite3.Connection = Depends(get_db)):
-    """Calculates global metrics and returns recent study blocks."""
+    """Calculates global metrics, pacing, and subject-level readiness."""
     cursor = db.cursor()
     
-    # Global Stats
+    # 1. Global Stats
     global_row = cursor.execute(
         """
         SELECT 
@@ -124,13 +209,14 @@ def get_dashboard_stats(db: sqlite3.Connection = Depends(get_db)):
     correct = global_row["correct"] or 0
     global_acc = (correct / total * 100.0) if total > 0 else 0.0
 
-    # Recent Sessions
+    # 2. Recent Sessions (Including qbank and scope required by SessionSummary)
     session_rows = cursor.execute(
         """
         SELECT 
-            s.id, s.created_at,
+            s.id, s.created_at, s.qbank, s.scope,
             COUNT(a.id) as answered,
-            SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as session_correct
+            SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as session_correct,
+            AVG(a.time_spent_seconds) as avg_time
         FROM study_sessions s
         LEFT JOIN session_attempts a ON s.id = a.session_id
         GROUP BY s.id
@@ -144,16 +230,53 @@ def get_dashboard_stats(db: sqlite3.Connection = Depends(get_db)):
         ans = r["answered"]
         s_corr = r["session_correct"] or 0
         acc = (s_corr / ans * 100.0) if ans > 0 else 0.0
+        avg_t = r["avg_time"] or 0.0
         
         recent_sessions.append(SessionSummary(
             session_id=r["id"],
             created_at=r["created_at"],
             questions_answered=ans,
-            accuracy_percentage=round(acc, 1)
+            accuracy_percentage=round(acc, 1),
+            average_time_seconds=round(avg_t, 1),
+            qbank=r["qbank"] or "medqa_usmle",
+            scope=r["scope"] or "All"
         ))
+
+    # 3. Subject-Level Readiness (Unifying medmcqa subjects and medqa_usmle exam types)
+    subject_rows = cursor.execute(
+        """
+        WITH all_questions AS (
+            SELECT id, subject, exam_type FROM medmcqa.bank_questions
+            UNION ALL
+            SELECT id, subject, exam_type FROM medqa_usmle.bank_questions
+        )
+        SELECT 
+            COALESCE(q.subject, q.exam_type) as subject,
+            COUNT(a.id) as subject_total,
+            SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as subject_correct
+        FROM session_attempts a
+        JOIN all_questions q ON a.question_id = q.id
+        WHERE COALESCE(q.subject, q.exam_type) IS NOT NULL
+        GROUP BY COALESCE(q.subject, q.exam_type)
+        ORDER BY subject_total DESC;
+        """
+    ).fetchall()
+
+    subject_performance = []
+    for r in subject_rows:
+        s_total = r["subject_total"]
+        s_corr = r["subject_correct"] or 0
+        s_acc = (s_corr / s_total * 100.0) if s_total > 0 else 0.0
+
+        subject_performance.append({
+            "subject": r["subject"],
+            "total_answered": s_total,
+            "accuracy_percentage": round(s_acc, 1)
+        })
 
     return DashboardOut(
         total_answered=total,
         global_accuracy=round(global_acc, 1),
-        recent_sessions=recent_sessions
+        recent_sessions=recent_sessions,
+        subject_performance=subject_performance
     )

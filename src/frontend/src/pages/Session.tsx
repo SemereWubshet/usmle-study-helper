@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchQuestion, submitSessionAttempt } from '../api'
+import { fetchQuestion, submitSessionAttempt, type Question } from '../api'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +23,7 @@ export default function Session() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
   const [struckOptions, setStruckOptions] = useState<number[]>([])
   const [attemptResult, setAttemptResult] = useState<any>(null)
-
+  
   // Boot user back to dashboard if they navigate here directly without generating a block
   useEffect(() => {
     if (!sessionData) navigate('/')
@@ -45,6 +45,10 @@ export default function Session() {
     enabled: !!currentQuestionId,
     refetchOnWindowFocus: false,
   })
+
+  const sessionTitle = sessionData?.qbank === 'medqa_usmle' 
+    ? (question?.exam_type || 'USMLE Practice')
+    : (question?.subject ? `MedMCQA • ${question.subject}` : 'MedMCQA • Custom Block');
 
   // Submit attempt mutation
   const attemptMutation = useMutation({
@@ -93,7 +97,7 @@ export default function Session() {
       )
     }
 
-  const options = [question?.opa, question?.opb, question?.opc, question?.opd]
+  const options = question?.options || [question?.opa, question?.opb, question?.opc, question?.opd]
 
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col space-y-8 animate-in fade-in duration-500 mt-4">
@@ -101,16 +105,8 @@ export default function Session() {
       {/* Session Header */}
       <header className="w-full flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/')}
-            className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800"
-          >
-            ← Dashboard
-          </Button>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Custom Session</h1>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{sessionTitle}</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">Right-click to strike through</p>
           </div>
         </div>
@@ -189,23 +185,34 @@ export default function Session() {
       </Card>
 
       {attemptResult && (
-            <Card className="w-full max-w-3xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <span className={`text-sm font-semibold px-2.5 py-1 rounded ${attemptResult.is_correct ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800' : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800'}`}>
-                    {attemptResult.is_correct ? 'Correct' : 'Incorrect'}
-                  </span>
-                  <span className="text-sm text-slate-500 dark:text-slate-400">
-                    Correct choice was ({String.fromCharCode(65 + attemptResult.correct_option)})
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                  {attemptResult.explanation || 'No rationale provided.'}
+        <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <span className={`text-sm font-semibold px-2.5 py-1 rounded ${attemptResult.is_correct ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800' : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800'}`}>
+                {attemptResult.is_correct ? 'Correct' : 'Incorrect'}
+              </span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Correct choice was ({String.fromCharCode(65 + attemptResult.correct_option)})
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {question?.explanation ? (
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                {question.explanation}
+              </p>
+            ) : (
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 space-y-1">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Correct Answer: {String.fromCharCode(65 + attemptResult.correct_option)} {question?.correct_text ? `— ${question.correct_text}` : ''}
                 </p>
-              </CardContent>
-            </Card>
+                <p className="text-xs text-slate-500 dark:text-slate-500">
+                  This official dataset does not provide extended rationales.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   )

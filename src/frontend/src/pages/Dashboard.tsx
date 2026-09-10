@@ -1,15 +1,14 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { fetchDashboardStats, createSession } from '../api'
+import { fetchDashboardStats, createSession, type SessionPayload } from '../api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { Activity, Target, Zap, Settings2, Play } from 'lucide-react'
+import { Activity, Target, Zap, Settings2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 // Helper to get local YYYY-MM-DD string
@@ -18,9 +17,21 @@ const getLocalDateStr = (date: Date) => date.toLocaleDateString('en-CA')
 export default function Dashboard() {
   const navigate = useNavigate()
   const [blockCount, setBlockCount] = useState([40])
+
+  const [selectedQbank, setSelectedQbank] = useState("medqa_usmle")
+  const [examTarget, setExamTarget] = useState("USMLE Step 1")
   
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['All Systems'])
-  const subjects = ['All Systems', 'Cardiology', 'Neurology', 'Renal', 'Respiratory', 'Anatomy']
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['All Subjects'])
+  const [subjectSearch, setSubjectSearch] = useState('')
+
+  const subjects = [
+    'All Subjects',
+    'Anatomy', 'Physiology', 'Biochemistry', 'Pharmacology', 'Pathology',
+    'Microbiology', 'Forensic Medicine', 'Social & Preventive Medicine',
+    'Medicine', 'Surgery', 'Pediatrics', 'Gynaecology & Obstetrics',
+    'Orthopaedics', 'Ophthalmology', 'ENT', 'Psychiatry',
+    'Dermatology', 'Radiology', 'Anaesthesia', 'Dental'
+  ]
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboardStats'],
@@ -28,18 +39,18 @@ export default function Dashboard() {
   })
 
   const sessionMutation = useMutation({
-    mutationFn: () => createSession("medmcqa", blockCount[0]),
+    mutationFn: (payload: SessionPayload) => createSession(payload),
     onSuccess: (data) => navigate('/session', { state: { sessionData: data } }),
   })
 
   const toggleSubject = (subject: string) => {
-    if (subject === 'All Systems') {
-      setSelectedSubjects(['All Systems'])
+    if (subject === 'All Subjects') {
+      setSelectedSubjects(['All Subjects'])
       return
     }
-    const newSubjects = selectedSubjects.filter(s => s !== 'All Systems')
+    const newSubjects = selectedSubjects.filter(s => s !== 'All Subjects')
     if (newSubjects.includes(subject)) {
-      setSelectedSubjects(newSubjects.filter(s => s !== subject).length ? newSubjects.filter(s => s !== subject) : ['All Systems'])
+      setSelectedSubjects(newSubjects.filter(s => s !== subject).length ? newSubjects.filter(s => s !== subject) : ['All Subjects'])
     } else {
       setSelectedSubjects([...newSubjects, subject])
     }
@@ -130,12 +141,17 @@ export default function Dashboard() {
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center">
           <CardContent className="p-6 space-y-4">
             <Button 
-              onClick={() => { setBlockCount([40]); sessionMutation.mutate(); }}
+              onClick={() => sessionMutation.mutate({ 
+                qbank: "medqa_usmle", 
+                block_size: 40, 
+                exam_type: "USMLE Step 1" 
+              })}
               disabled={sessionMutation.isPending}
-              className="w-full h-14 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200"
+              // Update line below to change the Quick Start color!
+              className="w-full h-14 border-green-300 dark:border-green-700 bg-green-200/50 dark:bg-green-700/40 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-600/50"
             >
-              <Play className="w-4 h-4 mr-2" />
-              Quick Start (40 Qs)
+              <Zap className="w-4 h-4 mr-2" />
+              Quick Start
             </Button>
             
             <Dialog>
@@ -156,16 +172,21 @@ export default function Dashboard() {
                     <div className="py-6 space-y-8">
                     {/* Q-Bank Selector */}
                     <div className="space-y-3">
-                        <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Question Bank</label>
-                        <select className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
-                        <option>medmcqa (Default)</option>
-                        </select>
+                      <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Question Bank</label>
+                      <select 
+                        value={selectedQbank}
+                        onChange={(e) => setSelectedQbank(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                      >
+                        <option value="medqa_usmle">USMLE Question Bank (MedQA)</option>
+                        <option value="medmcqa">Indian Question Bank (MedMCQA)</option>
+                      </select>
                     </div>
 
                     {/* Block Size Input & Slider */}
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                        <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Block Size</label>
+                        <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Num of Questions</label>
                         <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-900 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
                             <input 
                             type="number" 
@@ -187,32 +208,85 @@ export default function Dashboard() {
                         />
                     </div>
 
-                    {/* Target Systems Tags */}
+                    {/* Unified Target Scope Section */}
                     <div className="space-y-3">
-                        <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Target Systems</label>
-                        <div className="flex flex-wrap gap-2">
-                        {subjects.map(sub => (
-                            <Badge 
-                            key={sub} 
-                            variant={selectedSubjects.includes(sub) ? "default" : "outline"}
-                            className={`cursor-pointer px-3 py-1.5 transition-all duration-200 ${selectedSubjects.includes(sub) ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/20 border-transparent' : 'bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
-                            onClick={() => toggleSubject(sub)}
-                            >
-                            {sub}
-                            </Badge>
-                        ))}
-                        </div>
-                    </div>
-                    </div>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Target Scope</label>
+                        {selectedQbank === "medmcqa" && (
+                          <span className="text-xs text-slate-500">
+                            {selectedSubjects.includes('All Subjects') ? 'All included' : `${selectedSubjects.length} selected`}
+                          </span>
+                        )}
+                      </div>
 
+                      {selectedQbank === "medqa_usmle" ? (
+                        /* USMLE: 2 crisp segmented buttons */
+                        <div className="grid grid-cols-2 gap-2">
+                          {['USMLE Step 1', 'USMLE Step 2 and Step 3'].map(step => (
+                            <button
+                              key={step}
+                              type="button"
+                              onClick={() => setExamTarget(step)}
+                              className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all cursor-pointer text-center select-none ${
+                                examTarget === step
+                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-600 shadow-sm'
+                                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                              }`}
+                            >
+                              {step}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        /* MedMCQA: Searchable dropdown with scrollable checkboxes */
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            placeholder="Filter subjects (e.g. Pathology, Anatomy)..."
+                            value={subjectSearch}
+                            onChange={(e) => setSubjectSearch(e.target.value)}
+                            className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 transition-all"
+                          />
+                          <div className="max-h-36 overflow-y-auto space-y-1 pr-1 border border-slate-100 dark:border-slate-800/80 rounded-lg p-1.5 bg-slate-50/50 dark:bg-slate-900/30">
+                            {subjects
+                              .filter(sub => sub.toLowerCase().includes(subjectSearch.toLowerCase()))
+                              .map(sub => {
+                                const isSelected = selectedSubjects.includes(sub)
+                                return (
+                                  <button
+                                    key={sub}
+                                    type="button"
+                                    onClick={() => toggleSubject(sub)}
+                                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-all text-left cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-emerald-500 text-white shadow-xs'
+                                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
+                                    }`}
+                                  >
+                                    <span>{sub}</span>
+                                    {isSelected && <span>✓</span>}
+                                  </button>
+                                )
+                              })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                    {/* Generate Button Payload Update */}
                     <div className="pt-2">
-                        <Button 
-                            onClick={() => sessionMutation.mutate()} 
-                            disabled={sessionMutation.isPending}
-                            className="w-full h-14 text-lg rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02]"
-                        >
-                            {sessionMutation.isPending ? 'Generating...' : 'Generate & Start'}
-                        </Button>
+                      <Button 
+                        onClick={() => sessionMutation.mutate({
+                          qbank: selectedQbank,
+                          block_size: blockCount[0],
+                          ...(selectedQbank === "medqa_usmle" ? { exam_type: examTarget } : { subjects: selectedSubjects })
+                        })} 
+                        disabled={sessionMutation.isPending}
+                        className="w-full h-14 text-lg rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02]"
+                      >
+                        {sessionMutation.isPending ? 'Generating...' : 'Generate & Start'}
+                      </Button>
                     </div>
                 </DialogContent>
             </Dialog>

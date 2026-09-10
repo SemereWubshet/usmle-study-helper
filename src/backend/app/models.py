@@ -1,21 +1,34 @@
+import json
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 # --- Question & Attempt Models ---
 class QuestionOut(BaseModel):
     id: str
     question: str
-    opa: str
-    opb: str
-    opc: str
-    opd: str
+    options: List[str]
     subject: Optional[str] = None
+    explanation: Optional[str] = None
+    correct_text: Optional[str] = None
+    exam_type: Optional[str] = None
+    metamap_phrases: Optional[List[str]] = None
+
+    @field_validator("metamap_phrases", mode="before")
+    @classmethod
+    def parse_metamap(cls, v):
+        """Automatically deserializes SQLite JSON strings into Python lists."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return []
+        return v
 
 class AttemptIn(BaseModel):
     question_id: str
     selected_option: int
-    time_spent_seconds: int  # New field for the Study Block engine
+    time_spent_seconds: int
 
 class AttemptOut(BaseModel):
     question_id: str
@@ -26,12 +39,16 @@ class AttemptOut(BaseModel):
 
 # --- Session Models ---
 class SessionCreate(BaseModel):
-    qbank_name: str = "medmcqa"
-    target_count: int = 40  # Standard USMLE block size
+    qbank: str = "medqa_usmle"
+    block_size: int = 40
+    subjects: Optional[List[str]] = None
+    exam_type: Optional[str] = None
 
 class SessionOut(BaseModel):
     session_id: int
-    question_ids: List[str]  # The frontend will use this queue to navigate the block
+    qbank: str
+    question_ids: List[str]
+    questions: List[QuestionOut]
 
 # --- Dashboard Analytics Models ---
 class SessionSummary(BaseModel):
@@ -39,8 +56,17 @@ class SessionSummary(BaseModel):
     created_at: datetime
     questions_answered: int
     accuracy_percentage: float
+    average_time_seconds: float
+    qbank: str
+    scope: str
+
+class SubjectPerformance(BaseModel):
+    subject: str
+    total_answered: int
+    accuracy_percentage: float
 
 class DashboardOut(BaseModel):
     total_answered: int
     global_accuracy: float
     recent_sessions: List[SessionSummary]
+    subject_performance: List[SubjectPerformance]
