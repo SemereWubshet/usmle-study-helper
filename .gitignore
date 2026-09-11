@@ -25,6 +25,7 @@ USMLE-Helper
 *.sqlite
 *.sqlite3
 !src/backend/datasets/medqa_usmle.db
+!src/backend/datasets/medmcqa.db
 
 # Frontend (Node) and backend dataset cache
 node_modules/

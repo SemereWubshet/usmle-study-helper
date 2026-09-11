@@ -14,6 +14,25 @@ export default function EngineGate({ children }: EngineGateProps) {
   const [checking, setChecking] = useState(true)
   const [hasError, setHasError] = useState(false)
 
+  // Detect user's Operating System
+  const userOS = (() => {
+    if (typeof window === 'undefined') return 'windows'
+    const ua = window.navigator.userAgent.toLowerCase()
+    if (ua.includes('linux')) return 'linux'
+    if (ua.includes('mac')) return 'mac'
+    return 'windows'
+  })()
+
+  const downloadUrl = userOS === 'linux'
+    ? 'https://github.com/SemereWubshet/usmle-study-helper/releases/latest/download/USMLEStudyHelper-Linux.tar.gz'
+    : 'https://github.com/SemereWubshet/usmle-study-helper/releases/latest/download/USMLEStudyHelper-Windows.zip'
+
+  const downloadLabel = userOS === 'linux'
+    ? 'Download for Linux (.tar.gz)'
+    : 'Download for Windows (.zip)'
+
+  const binaryName = userOS === 'linux' ? 'USMLE-Helper' : 'USMLE-Helper.exe'
+
   const verifyEngine = async () => {
     setChecking(true)
     setHasError(false)
@@ -117,30 +136,43 @@ export default function EngineGate({ children }: EngineGateProps) {
                   2
                 </span>
                 <p>
-                  Double-click <span className="font-mono text-xs bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">USMLE-Helper.exe</span> to launch the local engine.
+                  Double-click <span className="font-mono text-xs bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">{binaryName}</span> to launch the local engine.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                asChild
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-11 shadow-sm gap-2"
-              >
-                <a href="#download-release" onClick={(e) => { e.preventDefault(); alert('Download will be linked to GitHub Releases executable once built!'); }}>
-                  <Download className="w-4 h-4" />
-                  Download for Windows (.zip)
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  asChild
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-11 shadow-sm gap-2"
+                >
+                  <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                    <Download className="w-4 h-4" />
+                    {downloadLabel}
+                  </a>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={verifyEngine}
+                  disabled={checking}
+                  className="rounded-xl h-11 border-slate-300 dark:border-slate-700 gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`} />
+                  Retry Connection
+                </Button>
+              </div>
+
+              <div className="text-center">
+                <a 
+                  href="https://github.com/SemereWubshet/usmle-study-helper/releases/latest" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
+                >
+                  Looking for other operating systems? View all downloads on GitHub &rarr;
                 </a>
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={verifyEngine}
-                disabled={checking}
-                className="rounded-xl h-11 border-slate-300 dark:border-slate-700 gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`} />
-                Retry Connection
-              </Button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800/80">
