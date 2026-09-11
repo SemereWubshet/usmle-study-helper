@@ -20,10 +20,11 @@ USMLEStudyHelper/
 USMLE-Helper.exe
 USMLE-Helper
 
-# Local SQLite state
+# Local SQLite state (Ignore user profile history database, but track dataset question banks)
 *.db
 *.sqlite
 *.sqlite3
+!src/backend/datasets/medqa_usmle.db
 
 # Frontend (Node) and backend dataset cache
 node_modules/
