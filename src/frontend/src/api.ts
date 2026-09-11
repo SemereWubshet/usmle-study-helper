@@ -16,14 +16,48 @@ export interface Question {
   metamap_phrases?: string[] | null;
 }
 
+// In local development with Vite dev proxy, API_BASE_URL defaults to empty string ('')
+// In production (Vercel / custom domain), VITE_API_BASE_URL points to the local HTTPS loopback (e.g. 'https://local.yourdomain.com:8000')
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
+export interface EngineHealth {
+  status: string;
+  version: string;
+  engine: string;
+}
+
+export const checkEngineHealth = async (customBaseUrl?: string): Promise<EngineHealth> => {
+  const base = (customBaseUrl !== undefined ? customBaseUrl : API_BASE_URL).replace(/\/$/, '');
+  const url = `${base}/api/health`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': 'application/json' },
+    // Short timeout so the UI gate does not hang indefinitely if engine is offline
+    signal: AbortSignal.timeout(3500)
+  });
+  if (!res.ok) throw new Error(`Engine returned status ${res.status}`);
+  return res.json();
+};
+
+// Intercepts API fetch errors when the engine shuts down and notifies the UI gate
+const safeFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  try {
+    const res = await fetch(input, init);
+    return res;
+  } catch (err) {
+    window.dispatchEvent(new CustomEvent('engine-disconnected'));
+    throw err;
+  }
+};
+
 export const fetchDashboardStats = async () => {
-  const res = await fetch('/api/v1/analytics/dashboard');
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/analytics/dashboard`);
   if (!res.ok) throw new Error('Failed to fetch dashboard stats');
   return res.json();
 };
 
 export const createSession = async (payload: SessionPayload) => {
-  const res = await fetch('/api/v1/sessions/', {
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/sessions/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -35,7 +69,7 @@ export const createSession = async (payload: SessionPayload) => {
 };
 
 export const fetchQuestion = async (questionId: string) => {
-  const res = await fetch(`/api/v1/questions/${questionId}`);
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/questions/${questionId}`);
   if (!res.ok) throw new Error('Failed to fetch question');
   return res.json();
 };
@@ -46,7 +80,7 @@ export const submitSessionAttempt = async (
   selectedOption: number, 
   timeSpent: number
 ) => {
-  const res = await fetch(`/api/v1/sessions/${sessionId}/attempt`, {
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/sessions/${sessionId}/attempt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

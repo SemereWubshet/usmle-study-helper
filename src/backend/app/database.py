@@ -1,7 +1,15 @@
+import os
+import sys
 import sqlite3
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# When packaged with PyInstaller, sys.frozen is True and sys.executable is the .exe path.
+# In development, __file__ is inside src/backend/app/database.py, so parent.parent is src/backend.
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
 PROFILE_DB = BASE_DIR / "profile" / "stats.db"
 MEDMCQA_DB = BASE_DIR / "datasets" / "medmcqa.db"
 MEDQA_USMLE_DB = BASE_DIR / "datasets" / "medqa_usmle.db"

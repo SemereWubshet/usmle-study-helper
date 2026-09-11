@@ -9,8 +9,12 @@ from .models import (
     SessionCreate, SessionOut, SessionSummary
 )
 
-app = FastAPI(title="USMLE Study Helper API", version="0.2.0")
+APP_VERSION = "0.2.0"
+MIN_FRONTEND_VERSION = "0.2.0"
 
+app = FastAPI(title="USMLE Study Helper API", version=APP_VERSION)
+
+# Dynamic CORS: Allow localhost for dev, loopback domain, and wildcard/remote Vercel origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,6 +22,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/api/health")
+@app.get("/api/v1/health")
+def health_check():
+    """Heartbeat endpoint queried by the hosted frontend gate to check engine connectivity."""
+    return {
+        "status": "healthy",
+        "version": APP_VERSION,
+        "engine": "USMLE-Study-Helper-Local-Engine"
+    }
+
+@app.get("/api/version")
+@app.get("/api/v1/version")
+def get_version():
+    """Version handshake endpoint to verify compatibility between remote frontend and local engine."""
+    return {
+        "version": APP_VERSION,
+        "min_frontend_version": MIN_FRONTEND_VERSION,
+        "engine": "USMLE-Study-Helper-Local-Engine"
+    }
 
 # The response_model here maps to your SessionOut class in models.py
 @app.post("/api/v1/sessions/", response_model=SessionOut)

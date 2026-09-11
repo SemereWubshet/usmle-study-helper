@@ -6,7 +6,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { Activity, Target, Zap, Settings2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -72,7 +71,6 @@ export default function Dashboard() {
     // 2. Current Streak
     const sessionDates = new Set(sessions.map((s: any) => getLocalDateStr(new Date(s.created_at))))
     let streak = 0
-    let checkDate = new Date(today)
     
     // Streak is alive if they studied today OR yesterday
     const yesterday = new Date(today)

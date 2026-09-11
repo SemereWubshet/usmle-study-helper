@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchQuestion, submitSessionAttempt, type Question } from '../api'
+import { fetchQuestion, submitSessionAttempt } from '../api'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -132,7 +132,7 @@ export default function Session() {
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {options.map((optText, idx) => {
+        {options.map((optText: string, idx: number) => {
           const optionNumber = idx
           const isSelected = selectedOption === optionNumber
           const isStruck = struckOptions.includes(optionNumber)
