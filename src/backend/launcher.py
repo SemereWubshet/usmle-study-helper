@@ -24,7 +24,7 @@ sys.path.insert(0, str(APP_DIR))
 import uvicorn
 from app.database import init_profile_db
 
-DEFAULT_WEB_URL = os.environ.get("USMLE_WEB_URL", "https://local.yourdomain.com:8000")
+DEFAULT_WEB_URL = os.environ.get("USMLE_WEB_URL", "https://usmle.semere.dev:8000")
 HOST = os.environ.get("USMLE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("USMLE_PORT", "8000"))
 
@@ -36,9 +36,8 @@ SSL_KEY = CERTS_DIR / "key.pem"
 def open_browser():
     """Wait for FastAPI server to bind port and launch student browser."""
     time.sleep(1.2)
-    # If using custom remote frontend (e.g. Vercel), open that URL
-    # Otherwise open local loopback docs/app
-    url = os.environ.get("USMLE_FRONTEND_URL", "http://127.0.0.1:8000/docs")
+    # When students launch the engine, open the hosted frontend gate automatically
+    url = os.environ.get("USMLE_FRONTEND_URL", "https://usmle.semere.dev")
     print(f"[Launcher] Opening web browser to {url}...")
     try:
         webbrowser.open(url)

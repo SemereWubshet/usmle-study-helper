@@ -9,9 +9,21 @@ cookies.json
 *.pem
 *.key
 *.cert
+*.crt
+certs/
+**/certs/*
+
+# PyInstaller & Executable Build artifacts
+build/
+*.spec.bak
+USMLEStudyHelper/
+USMLE-Helper.exe
+USMLE-Helper
 
 # Local SQLite state
 *.db
+*.sqlite
+*.sqlite3
 
 # Frontend (Node) and backend dataset cache
 node_modules/

@@ -1,0 +1,77 @@
+name: Build Windows Release Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: # Allows triggering the build manually from GitHub Actions UI
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller fastapi uvicorn pydantic
+
+      - name: Provision SSL Certificates from Secrets
+        shell: bash
+        env:
+          SSL_CERT: ${{ secrets.SSL_CERT }}
+          SSL_KEY: ${{ secrets.SSL_KEY }}
+        run: |
+          mkdir -p src/backend/certs
+          echo "$SSL_CERT" > src/backend/certs/cert.pem
+          echo "$SSL_KEY" > src/backend/certs/key.pem
+
+      - name: Build Executable with PyInstaller
+        run: |
+          cd src/backend
+          pyinstaller usmle_engine.spec --clean --noconfirm
+
+      - name: Assemble Portable Package Folder
+        shell: bash
+        run: |
+          # Create clean portable staging folder
+          mkdir -p package/USMLEStudyHelper/certs
+          mkdir -p package/USMLEStudyHelper/datasets
+          mkdir -p package/USMLEStudyHelper/profile
+
+          # Copy the PyInstaller output folder or binary
+          cp -r src/backend/dist/USMLEStudyHelper/* package/USMLEStudyHelper/
+          
+          # Copy certificates and question datasets into the package
+          cp src/backend/certs/*.pem package/USMLEStudyHelper/certs/
+          cp src/backend/datasets/*.db package/USMLEStudyHelper/datasets/
+
+          # Zip the portable folder
+          cd package
+          7z a -tzip ../USMLEStudyHelper-Windows.zip USMLEStudyHelper
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: USMLEStudyHelper-Windows
+          path: USMLEStudyHelper-Windows.zip
+
+      - name: Publish to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: USMLEStudyHelper-Windows.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true

@@ -95,7 +95,7 @@ export default function EngineGate({ children }: EngineGateProps) {
               Local Engine Not Detected
             </CardTitle>
             <CardDescription className="text-slate-500 text-sm mt-1">
-              Your USMLE questions and study statistics stay 100% private on your laptop.
+              Your USMLE questions and study statistics stay 100% private on your computer.
             </CardDescription>
           </CardHeader>
 
