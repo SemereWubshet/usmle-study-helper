@@ -68,6 +68,7 @@ export default function Session() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [sessionData])
 
+
   const currentQuestionId = sessionData?.question_ids[currentIndex]
 
   // Fetch the active question
@@ -126,6 +127,49 @@ export default function Session() {
     }
   }
 
+  // Keyboard Shortcuts (A-D, 1-4, Enter to submit/advance, Space to advance)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if focus is inside an input or textarea
+      const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+      if (targetTag === 'input' || targetTag === 'textarea') return
+
+      const key = e.key.toUpperCase()
+
+      // 1. If question is NOT yet submitted: A, B, C, D (or 1, 2, 3, 4) to pick answers
+      if (!attemptResult) {
+        if (key === 'A' || key === '1') {
+          e.preventDefault()
+          handleSelectOption(0)
+        } else if (key === 'B' || key === '2') {
+          e.preventDefault()
+          handleSelectOption(1)
+        } else if (key === 'C' || key === '3') {
+          e.preventDefault()
+          handleSelectOption(2)
+        } else if (key === 'D' || key === '4') {
+          e.preventDefault()
+          handleSelectOption(3)
+        } else if (key === 'ENTER') {
+          // Enter submits the selected option
+          if (selectedOption !== null && !attemptMutation.isPending) {
+            e.preventDefault()
+            handleSubmit()
+          }
+        }
+      } else {
+        // 2. If question IS submitted: Space or Enter moves to Next Question
+        if (key === ' ' || key === 'ENTER') {
+          e.preventDefault()
+          handleNext()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [attemptResult, selectedOption, attemptMutation.isPending, currentIndex, sessionData])
+
   if (isLoading) {
       return (
         <div className="w-full flex items-center justify-center mt-12">
@@ -144,7 +188,13 @@ export default function Session() {
         <div className="flex items-center space-x-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{sessionTitle}</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Right-click to strike through</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+              <span>Keys: <kbd className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[10px]">A-D</kbd> select</span>
+              <span>•</span>
+              <span><kbd className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[10px]">Enter</kbd> submit / next</span>
+              <span>•</span>
+              <span>Right-click strike</span>
+            </p>
           </div>
         </div>
         

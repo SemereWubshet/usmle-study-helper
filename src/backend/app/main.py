@@ -18,13 +18,13 @@ from .models import (
 APP_VERSION = "0.2.0"
 MIN_FRONTEND_VERSION = "0.2.0"
 LAST_HEARTBEAT = time.time()
-WATCHDOG_TIMEOUT_SECONDS = 10
-WATCHDOG_GRACE_PERIOD = 10
+WATCHDOG_TIMEOUT_SECONDS = 120
+WATCHDOG_GRACE_PERIOD = 120
 def watchdog_worker():
     """Background thread that shuts down the engine if all browser tabs are closed."""
     time.sleep(WATCHDOG_GRACE_PERIOD)
     while True:
-        time.sleep(5)
+        time.sleep(15)
         idle_time = time.time() - LAST_HEARTBEAT
         if idle_time > WATCHDOG_TIMEOUT_SECONDS:
             print(f"[Watchdog] No active browser tabs detected for {int(idle_time)}s. Shutting down cleanly...")
