@@ -3,6 +3,12 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+import os
+import signal
+import time
+import threading
+from contextlib import asynccontextmanager
+
 from .database import get_db
 from .models import (
     AttemptIn, AttemptOut, DashboardOut, QuestionOut, 
@@ -11,8 +17,32 @@ from .models import (
 
 APP_VERSION = "0.2.0"
 MIN_FRONTEND_VERSION = "0.2.0"
+LAST_HEARTBEAT = time.time()
+WATCHDOG_TIMEOUT_SECONDS = 10
+WATCHDOG_GRACE_PERIOD = 10
+def watchdog_worker():
+    """Background thread that shuts down the engine if all browser tabs are closed."""
+    time.sleep(WATCHDOG_GRACE_PERIOD)
+    while True:
+        time.sleep(5)
+        idle_time = time.time() - LAST_HEARTBEAT
+        if idle_time > WATCHDOG_TIMEOUT_SECONDS:
+            print(f"[Watchdog] No active browser tabs detected for {int(idle_time)}s. Shutting down cleanly...")
+            os.kill(os.getpid(), signal.SIGINT)
+            break
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start the background watchdog thread
+    thread = threading.Thread(target=watchdog_worker, daemon=True)
+    thread.start()
+    yield
+    # Shutdown: (Cleanup if needed)
 
-app = FastAPI(title="USMLE Study Helper API", version=APP_VERSION)
+app = FastAPI(
+    title="USMLE Study Helper API", 
+    version=APP_VERSION,
+    lifespan=lifespan
+)
 
 # Dynamic CORS: Allow localhost for dev, loopback domain, and wildcard/remote Vercel origins
 app.add_middleware(
@@ -22,6 +52,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.post("/api/heartbeat")
+@app.post("/api/heartbeat/")
+@app.get("/api/heartbeat")
+@app.post("/api/v1/heartbeat")
+def heartbeat():
+    global LAST_HEARTBEAT
+    LAST_HEARTBEAT = time.time()
+    return {"status": "alive"}
 
 @app.get("/api/health")
 @app.get("/api/v1/health")

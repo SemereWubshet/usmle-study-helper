@@ -82,6 +82,17 @@ export default function EngineGate({ children }: EngineGateProps) {
     return () => clearInterval(interval)
   }, [health])
 
+  useEffect(() => {
+  if (!health) return
+  // Send an immediate heartbeat upon connecting
+  fetch(`${API_BASE_URL}/api/heartbeat`, { method: 'POST' }).catch(() => {})
+  // Send a heartbeat every 10 seconds while this tab is open
+  const interval = setInterval(() => {
+    fetch(`${API_BASE_URL}/api/heartbeat`, { method: 'POST' }).catch(() => {})
+  }, 45000)
+  return () => clearInterval(interval)
+}, [health])
+
   if (checking && !health) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
