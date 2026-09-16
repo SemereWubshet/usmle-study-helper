@@ -1,5 +1,6 @@
 # plans
 /plans/
+/.agents/
 cookies.json
 
 # Env and secrets
