@@ -253,6 +253,14 @@ def record_attempt(
         explanation=row["explanation"]
     )
 
+@app.post("/api/v1/sessions/{session_id}/complete")
+def complete_session(session_id: int, db: sqlite3.Connection = Depends(get_db)):
+    """Marks a session as completed in the profile database."""
+    cursor = db.cursor()
+    cursor.execute("UPDATE study_sessions SET is_completed = 1 WHERE id = ?;", (session_id,))
+    db.commit()
+    return {"status": "completed", "session_id": session_id}
+
 @app.get("/api/v1/analytics/dashboard", response_model=DashboardOut)
 def get_dashboard_stats(db: sqlite3.Connection = Depends(get_db)):
     """Calculates global metrics, pacing, and subject-level readiness."""

@@ -92,3 +92,12 @@ export const submitSessionAttempt = async (
   if (!res.ok) throw new Error('Failed to submit attempt');
   return res.json();
 };
+
+export const completeSession = async (sessionId: number) => {
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/sessions/${sessionId}/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error('Failed to mark session complete');
+  return res.json();
+};

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Slider } from '@/components/ui/slider'
-import { Activity, Target, Zap, Settings2 } from 'lucide-react'
+import { Activity, Target, Zap, Settings2, SlidersHorizontal } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 // Helper to get local YYYY-MM-DD string
@@ -22,6 +22,11 @@ export default function Dashboard() {
   
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['All Subjects'])
   const [subjectSearch, setSubjectSearch] = useState('')
+
+  // Configurable Review Benchmarks
+  const [passingThreshold, setPassingThreshold] = useState(60)
+  const [excellenceThreshold, setExcellenceThreshold] = useState(80)
+  const [targetSeconds, setTargetSeconds] = useState(90)
 
   const subjects = [
     'All Subjects',
@@ -38,7 +43,18 @@ export default function Dashboard() {
   })
 
   const sessionMutation = useMutation({
-    mutationFn: (payload: SessionPayload) => createSession(payload),
+    mutationFn: async (payload: SessionPayload & { customConfig?: { passingThreshold: number; excellenceThreshold: number; targetSeconds: number } }) => {
+      const { customConfig, ...backendPayload } = payload
+      const data = await createSession(backendPayload)
+      return {
+        ...data,
+        customConfig: customConfig || {
+          passingThreshold: 60,
+          excellenceThreshold: 80,
+          targetSeconds: 90,
+        },
+      }
+    },
     onSuccess: (data) => navigate('/session', { state: { sessionData: data } }),
   })
 
@@ -159,15 +175,15 @@ export default function Dashboard() {
                     Custom Session
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px] p-6 sm:p-8 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl">
+                <DialogContent className="sm:max-w-[520px] max-h-[85vh] overflow-y-auto p-6 sm:p-8 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl">
                     <DialogHeader className="space-y-2 text-left">
                     <DialogTitle className="text-2xl font-bold text-slate-900 dark:text-white">Configure Session</DialogTitle>
                     <DialogDescription className="text-slate-500 dark:text-slate-400">
-                        Set up your targeted study parameters.
+                        Set up your targeted study parameters and performance goals.
                     </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="py-6 space-y-8">
+                    <div className="py-6 space-y-7">
                     {/* Q-Bank Selector */}
                     <div className="space-y-3">
                       <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">Question Bank</label>
@@ -270,6 +286,85 @@ export default function Dashboard() {
                         </div>
                       )}
                     </div>
+
+                    {/* Performance & Pacing Benchmarks */}
+                    <div className="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <SlidersHorizontal className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                            Review & Pacing Targets
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPassingThreshold(60)
+                            setExcellenceThreshold(80)
+                            setTargetSeconds(90)
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium underline"
+                        >
+                          Reset defaults
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2.5">
+                        {/* Passing Threshold */}
+                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-500 font-medium">Passing</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">{passingThreshold}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={40}
+                            max={90}
+                            step={5}
+                            value={passingThreshold}
+                            onChange={(e) => setPassingThreshold(Number(e.target.value))}
+                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                          />
+                          <p className="text-[10px] text-slate-400 text-center">Standard passing</p>
+                        </div>
+
+                        {/* Excellence / Mastery Threshold */}
+                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-500 font-medium">Mastery</span>
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400">{excellenceThreshold}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={60}
+                            max={100}
+                            step={5}
+                            value={excellenceThreshold}
+                            onChange={(e) => setExcellenceThreshold(Number(e.target.value))}
+                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                          />
+                          <p className="text-[10px] text-slate-400 text-center">Gold standard</p>
+                        </div>
+
+                        {/* Target Pace (Seconds) */}
+                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-500 font-medium">Pace</span>
+                            <span className="font-bold text-blue-600 dark:text-blue-400">{targetSeconds}s</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={30}
+                            max={180}
+                            step={5}
+                            value={targetSeconds}
+                            onChange={(e) => setTargetSeconds(Number(e.target.value))}
+                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          />
+                          <p className="text-[10px] text-slate-400 text-center">{Math.floor(targetSeconds / 60)}m {targetSeconds % 60}s / Q</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                     {/* Generate Button Payload Update */}
@@ -278,7 +373,12 @@ export default function Dashboard() {
                         onClick={() => sessionMutation.mutate({
                           qbank: selectedQbank,
                           block_size: blockCount[0],
-                          ...(selectedQbank === "medqa_usmle" ? { exam_type: examTarget } : { subjects: selectedSubjects })
+                          ...(selectedQbank === "medqa_usmle" ? { exam_type: examTarget } : { subjects: selectedSubjects }),
+                          customConfig: {
+                            passingThreshold,
+                            excellenceThreshold,
+                            targetSeconds,
+                          },
                         })} 
                         disabled={sessionMutation.isPending}
                         className="w-full h-14 text-lg rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02]"

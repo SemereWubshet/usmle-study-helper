@@ -1,11 +1,39 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchQuestion, submitSessionAttempt } from '../api'
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { fetchQuestion, submitSessionAttempt, completeSession } from '../api'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { 
+  Trophy, Clock, BookOpen, AlertTriangle, Layers, Check, X,
+  Award, Sparkles, LayoutDashboard, BarChart3,
+  Search, Plus, Bookmark, BookmarkCheck, Copy, CheckCheck,
+  FileText, Trash2, ChevronDown, ChevronUp, PanelRightClose, PanelRightOpen
+} from 'lucide-react'
+
+// ============================================================================
+// CONFIGURABLE REVIEW DISPLAY SETTINGS & THRESHOLDS
+// (Edit these values to customize the scorecard & pacing indicators)
+// ============================================================================
+export const PASSING_ACCURACY_THRESHOLD = 60; // Standard USMLE passing score (default: 60%)
+export const EXCELLENT_ACCURACY_THRESHOLD = 80; // High-yield mastery threshold (default: 80%)
+export const TARGET_SECONDS_PER_QUESTION = 90; // Standard USMLE time allotment per question (default: 90s)
+
+export interface StoredAttempt {
+  questionId: string;
+  questionIndex: number; // 0-based
+  selectedOption: number;
+  correctOption: number;
+  isCorrect: boolean;
+  timeSpent: number;
+  explanation?: string | null;
+  subject?: string | null;
+  questionText?: string;
+  options?: string[];
+  correctText?: string | null;
+}
 
 export default function Session() {
   const location = useLocation()
@@ -22,6 +50,40 @@ export default function Session() {
     return cached ? JSON.parse(cached) : null
   })
   
+  // State for review mode
+  const [isReviewMode, setIsReviewMode] = useState<boolean>(() => {
+    if (!sessionData?.session_id) return false
+    return localStorage.getItem(`usmle_session_is_review_${sessionData.session_id}`) === 'true'
+  })
+
+  // Track all attempts accumulated throughout this session block
+  const [attempts, setAttempts] = useState<Record<number, StoredAttempt>>(() => {
+    if (!sessionData?.session_id) return {}
+    const saved = localStorage.getItem(`usmle_session_attempts_${sessionData.session_id}`)
+    return saved ? JSON.parse(saved) : {}
+  })
+
+  // State for review filter and selected question in review mode
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'incorrect' | 'correct'>('all')
+  const [selectedReviewIndex, setSelectedReviewIndex] = useState<number>(0)
+
+  // Review Mode: Cards & Notes Workspace state
+  const [cardSearchQuery, setCardSearchQuery] = useState('')
+  const [cardFilterTag, setCardFilterTag] = useState<'all' | 'high-yield' | 'pharmacology' | 'pathology' | 'notes'>('all')
+  const [revealedCardIds, setRevealedCardIds] = useState<Record<string, boolean>>({})
+  const [bookmarkedCardIds, setBookmarkedCardIds] = useState<Record<string, boolean>>({})
+  const [copiedCardId, setCopiedCardId] = useState<string | null>(null)
+
+  // Personal study notes per question (persisted to localStorage)
+  const [sessionNotes, setSessionNotes] = useState<Record<number, string[]>>(() => {
+    if (!sessionData?.session_id) return {}
+    const saved = localStorage.getItem(`usmle_session_notes_${sessionData.session_id}`)
+    return saved ? JSON.parse(saved) : {}
+  })
+  const [isAddingNote, setIsAddingNote] = useState(false)
+  const [newNoteText, setNewNoteText] = useState('')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+
   // State for block progression and timing, restored from localStorage if available
   const [currentIndex, setCurrentIndex] = useState(() => {
     if (!sessionData?.session_id) return 0
@@ -37,10 +99,10 @@ export default function Session() {
   
   // Update progress in localStorage whenever currentIndex changes
   useEffect(() => {
-    if (sessionData?.session_id) {
+    if (sessionData?.session_id && !isReviewMode) {
       localStorage.setItem(`usmle_session_progress_${sessionData.session_id}`, currentIndex.toString())
     }
-  }, [sessionData?.session_id, currentIndex])
+  }, [sessionData?.session_id, currentIndex, isReviewMode])
 
   // Boot user back to dashboard only if there is genuinely no active session
   useEffect(() => {
@@ -49,33 +111,31 @@ export default function Session() {
 
   // Timer logic for the active question
   useEffect(() => {
-    if (attemptResult) return // Stop timer when answer is submitted
+    if (isReviewMode || attemptResult) return // Stop timer during review or when answer is submitted
     const timer = setInterval(() => setTimeSpent(prev => prev + 1), 1000)
     return () => clearInterval(timer)
-  }, [attemptResult, currentIndex])
+  }, [attemptResult, currentIndex, isReviewMode])
 
-  // Guard against accidental refresh or tab closure during an active session
+  // Guard against accidental refresh or tab closure during an active session (disabled in review mode)
   useEffect(() => {
-    if (!sessionData) return
+    if (!sessionData || isReviewMode) return
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault()
-      // Standard browser requirement to trigger the "Leave site?" confirmation prompt
       e.returnValue = ''
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [sessionData])
+  }, [sessionData, isReviewMode])
 
-
-  const currentQuestionId = sessionData?.question_ids[currentIndex]
+  const currentQuestionId = sessionData?.question_ids?.[currentIndex]
 
   // Fetch the active question
   const { data: question, isLoading } = useQuery({
     queryKey: ['question', currentQuestionId],
     queryFn: () => fetchQuestion(currentQuestionId!),
-    enabled: !!currentQuestionId,
+    enabled: !!currentQuestionId && !isReviewMode,
     refetchOnWindowFocus: false,
   })
 
@@ -83,12 +143,37 @@ export default function Session() {
     ? (question?.exam_type || 'USMLE Practice')
     : (question?.subject ? `MedMCQA • ${question.subject}` : 'MedMCQA • Custom Block');
 
+  const options = question?.options || [question?.opa, question?.opb, question?.opc, question?.opd]
+
   // Submit attempt mutation
   const attemptMutation = useMutation({
     mutationFn: (opt: number) => submitSessionAttempt(sessionData.session_id, currentQuestionId!, opt, timeSpent),
-    onSuccess: (data) => {
+    onSuccess: (data, selectedOpt) => {
       setAttemptResult(data)
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
+
+      // Record this attempt in our accumulated session attempts
+      const newRecord: StoredAttempt = {
+        questionId: currentQuestionId!,
+        questionIndex: currentIndex,
+        selectedOption: selectedOpt,
+        correctOption: data.correct_option,
+        isCorrect: data.is_correct,
+        timeSpent: timeSpent,
+        explanation: data.explanation || question?.explanation,
+        subject: question?.subject,
+        questionText: question?.question,
+        options: options,
+        correctText: question?.correct_text,
+      }
+
+      setAttempts(prev => {
+        const updated = { ...prev, [currentIndex]: newRecord }
+        if (sessionData?.session_id) {
+          localStorage.setItem(`usmle_session_attempts_${sessionData.session_id}`, JSON.stringify(updated))
+        }
+        return updated
+      })
     },
   })
 
@@ -111,12 +196,13 @@ export default function Session() {
 
   const handleNext = () => {
     if (currentIndex + 1 >= sessionData.question_ids.length) {
-      // Clean up localStorage keys for this finished block
-      localStorage.removeItem('usmle_active_session')
+      // Transition to Review Mode & mark session completed in backend
       if (sessionData?.session_id) {
-        localStorage.removeItem(`usmle_session_progress_${sessionData.session_id}`)
+        completeSession(sessionData.session_id).catch(() => {})
+        localStorage.setItem(`usmle_session_is_review_${sessionData.session_id}`, 'true')
       }
-      navigate('/') // Block complete, return to dashboard
+      setIsReviewMode(true)
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
     } else {
       // Reset state for the next question in the queue
       setSelectedOption(null)
@@ -127,8 +213,45 @@ export default function Session() {
     }
   }
 
+  const handleAddNote = () => {
+    if (!newNoteText.trim() || !sessionData?.session_id) return
+    const currentList = sessionNotes[selectedReviewIndex] || []
+    const updated = {
+      ...sessionNotes,
+      [selectedReviewIndex]: [...currentList, newNoteText.trim()]
+    }
+    setSessionNotes(updated)
+    localStorage.setItem(`usmle_session_notes_${sessionData.session_id}`, JSON.stringify(updated))
+    setNewNoteText('')
+    setIsAddingNote(false)
+  }
+
+  const handleDeleteNote = (noteIdx: number) => {
+    if (!sessionData?.session_id) return
+    const currentList = sessionNotes[selectedReviewIndex] || []
+    const updated = {
+      ...sessionNotes,
+      [selectedReviewIndex]: currentList.filter((_, i) => i !== noteIdx)
+    }
+    setSessionNotes(updated)
+    localStorage.setItem(`usmle_session_notes_${sessionData.session_id}`, JSON.stringify(updated))
+  }
+
+  const handleFinishReview = () => {
+    if (sessionData?.session_id) {
+      localStorage.removeItem('usmle_active_session')
+      localStorage.removeItem(`usmle_session_progress_${sessionData.session_id}`)
+      localStorage.removeItem(`usmle_session_attempts_${sessionData.session_id}`)
+      localStorage.removeItem(`usmle_session_is_review_${sessionData.session_id}`)
+      localStorage.removeItem(`usmle_session_notes_${sessionData.session_id}`)
+    }
+    navigate('/')
+  }
+
   // Keyboard Shortcuts (A-D, 1-4, Enter to submit/advance, Space to advance)
   useEffect(() => {
+    if (isReviewMode) return
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger shortcuts if focus is inside an input or textarea
       const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase()
@@ -151,7 +274,6 @@ export default function Session() {
           e.preventDefault()
           handleSelectOption(3)
         } else if (key === 'ENTER') {
-          // Enter submits the selected option
           if (selectedOption !== null && !attemptMutation.isPending) {
             e.preventDefault()
             handleSubmit()
@@ -168,21 +290,526 @@ export default function Session() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [attemptResult, selectedOption, attemptMutation.isPending, currentIndex, sessionData])
+  }, [attemptResult, selectedOption, attemptMutation.isPending, currentIndex, sessionData, isReviewMode])
 
-  if (isLoading) {
-      return (
-        <div className="w-full flex items-center justify-center mt-12">
-          <Skeleton className="h-[400px] w-full max-w-4xl bg-slate-200 dark:bg-slate-800/50 rounded-2xl" />
-        </div>
-      )
+  // ==========================================================================
+  // REVIEW MODE CALCULATIONS (Tier 1 & Tier 2 Metrics)
+  // ==========================================================================
+  const totalQuestions = sessionData.question_ids?.length || 0
+  const attemptsList = useMemo(() => Object.values(attempts), [attempts])
+  const answeredCount = attemptsList.length
+  const correctCount = useMemo(() => attemptsList.filter(a => a.isCorrect).length, [attemptsList])
+  const incorrectCount = useMemo(() => attemptsList.filter(a => !a.isCorrect).length, [attemptsList])
+  const accuracyPercentage = answeredCount > 0 ? (correctCount / answeredCount) * 100 : 0
+
+  const totalTimeSeconds = useMemo(() => attemptsList.reduce((acc, a) => acc + (a.timeSpent || 0), 0), [attemptsList])
+  const averageSecondsPerQuestion = answeredCount > 0 ? Math.round(totalTimeSeconds / answeredCount) : 0
+  const fastestSeconds = useMemo(() => {
+    const correctAttempts = attemptsList.filter(a => a.isCorrect)
+    if (!correctAttempts.length) return 0
+    return Math.min(...correctAttempts.map(a => a.timeSpent))
+  }, [attemptsList])
+
+  // Filtered question indexes for the review grid
+  const filteredQuestionIndexes = useMemo(() => {
+    const allIndexes = Array.from({ length: totalQuestions }, (_, i) => i)
+    if (reviewFilter === 'all') return allIndexes
+    if (reviewFilter === 'correct') {
+      return allIndexes.filter(i => attempts[i]?.isCorrect === true)
     }
+    if (reviewFilter === 'incorrect') {
+      return allIndexes.filter(i => attempts[i] && !attempts[i]?.isCorrect)
+    }
+    return allIndexes
+  }, [totalQuestions, reviewFilter, attempts])
 
-  const options = question?.options || [question?.opa, question?.opb, question?.opc, question?.opd]
+  // Selected question in review mode (retrieved from sessionData.questions or attempts record)
+  const activeReviewQuestion = sessionData?.questions?.[selectedReviewIndex]
+  const activeReviewAttempt = attempts[selectedReviewIndex]
+
+  // Configurable thresholds (customized from session maker or defaults)
+  const passingThreshold = sessionData?.customConfig?.passingThreshold ?? PASSING_ACCURACY_THRESHOLD
+  const excellenceThreshold = sessionData?.customConfig?.excellenceThreshold ?? EXCELLENT_ACCURACY_THRESHOLD
+  const targetSeconds = sessionData?.customConfig?.targetSeconds ?? TARGET_SECONDS_PER_QUESTION
+
+  // Generate contextual cards for active question + user notes
+  const activeSidebarIndex = isReviewMode ? selectedReviewIndex : currentIndex;
+
+  const reviewCards = useMemo(() => {
+    const cards: Array<{
+      id: string;
+      category: 'high-yield' | 'pharmacology' | 'pathology' | 'notes';
+      categoryLabel: string;
+      title: string;
+      front: string;
+      back: string;
+      isCustomNote?: boolean;
+      noteIndex?: number;
+    }> = []
+
+    const qSubject = isReviewMode ? (activeReviewQuestion?.subject || activeReviewAttempt?.subject) : question?.subject;
+    const finalSubject = qSubject || 'Clinical Medicine';
+    
+    const correctOpt = isReviewMode ? activeReviewAttempt?.correctOption : attemptResult?.correct_option;
+    const qCorrectText = isReviewMode ? (activeReviewQuestion?.correct_text || activeReviewAttempt?.correctText) : question?.correct_text;
+    const finalCorrect = qCorrectText || (correctOpt !== undefined ? `Option ${String.fromCharCode(65 + correctOpt)}` : 'Correct Answer');
+    
+    const qExplanation = isReviewMode ? (activeReviewQuestion?.explanation || activeReviewAttempt?.explanation) : (attemptResult?.explanation || question?.explanation);
+    const finalExplanation = qExplanation || '';
+
+    cards.push({
+      id: `card-pearl-${activeSidebarIndex}`,
+      category: 'high-yield',
+      categoryLabel: 'High-Yield Pearl',
+      title: `${finalSubject} • Core Presentation`,
+      front: `What is the key diagnostic takeaway or primary concept tested in Question #${activeSidebarIndex + 1}?`,
+      back: finalExplanation 
+        ? (finalExplanation.length > 280 ? finalExplanation.slice(0, 280) + '...' : finalExplanation)
+        : `Primary High-Yield Concept: ${finalCorrect}. Make sure to recognize this classical presentation on exam day.`
+    })
+
+    cards.push({
+      id: `card-pharm-${activeSidebarIndex}`,
+      category: 'pharmacology',
+      categoryLabel: 'Pharmacology & Mechanism',
+      title: 'Mechanism of Action & Therapeutics',
+      front: `What is the first-line therapy or pharmacological mechanism associated with ${finalCorrect.slice(0, 35)}?`,
+      back: `Review receptor binding, enzyme inhibition, or biochemical pathways related to ${finalCorrect}. Note common contraindications and high-yield adverse effects.`
+    })
+
+    cards.push({
+      id: `card-path-${activeSidebarIndex}`,
+      category: 'pathology',
+      categoryLabel: 'Diagnostic Differential',
+      title: 'Distractor Traps & Differential',
+      front: `Why might another choice have seemed plausible, and what key feature rules it out?`,
+      back: `Exam vignettes often include distractors with overlapping symptoms. Focus on age, onset speed, laboratory flags, and biopsy/imaging findings to definitively differentiate.`
+    })
+
+    const notesForQ = sessionNotes[activeSidebarIndex] || []
+    notesForQ.forEach((note, nIdx) => {
+      cards.push({
+        id: `card-note-${activeSidebarIndex}-${nIdx}`,
+        category: 'notes',
+        categoryLabel: 'My Note',
+        title: `Study Note #${nIdx + 1}`,
+        front: note,
+        back: note,
+        isCustomNote: true,
+        noteIndex: nIdx
+      })
+    })
+
+    return cards
+  }, [isReviewMode, activeReviewQuestion, activeReviewAttempt, question, attemptResult, activeSidebarIndex, sessionNotes])
+
+  const filteredCards = useMemo(() => {
+    return reviewCards.filter(card => {
+      if (cardFilterTag !== 'all' && card.category !== cardFilterTag) {
+        return false
+      }
+      if (cardSearchQuery.trim()) {
+        const q = cardSearchQuery.toLowerCase()
+        return (
+          card.title.toLowerCase().includes(q) ||
+          card.front.toLowerCase().includes(q) ||
+          card.back.toLowerCase().includes(q) ||
+          card.categoryLabel.toLowerCase().includes(q)
+        )
+      }
+      return true
+    })
+  }, [reviewCards, cardFilterTag, cardSearchQuery])
+
+  // ==========================================================================
+  // UNIFIED RENDER: APP SHELL WITH RIGHT SIDEBAR
+  // ==========================================================================
+  const isPassing = accuracyPercentage >= passingThreshold
+  const isExcellent = accuracyPercentage >= excellenceThreshold
+  const isOnPace = averageSecondsPerQuestion <= targetSeconds
+
+  if (isLoading && !isReviewMode) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Skeleton className="h-[400px] w-full max-w-4xl bg-slate-200 dark:bg-slate-800/50 rounded-2xl" />
+      </div>
+    )
+  }
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col space-y-8 animate-in fade-in duration-500 mt-4">
+    <div className="h-full w-full overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row gap-6">
       
+      {/* MAIN SCROLLING STAGE */}
+      <div className={`w-full ${isSidebarOpen ? 'lg:w-[65%] xl:w-[68%]' : 'max-w-5xl mx-auto'} lg:h-full lg:overflow-y-auto pr-0 ${isSidebarOpen ? 'lg:pr-2' : ''} transition-all duration-300`}>
+        <div className="w-full py-2 flex flex-col space-y-6 animate-in fade-in duration-500">
+          
+          {isReviewMode ? (
+            <>
+        {/* Navigation & Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">
+                Block Completed
+              </Badge>
+              <span className="text-xs text-slate-500 font-medium capitalize">
+                {sessionData.qbank === 'medqa_usmle' ? 'USMLE Practice' : 'MedMCQA Bank'}
+              </span>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Session Scorecard & Review
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Review question rationales, pacing metrics, and explore high-yield concept cards.
+            </p>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <Button
+              size="sm"
+              variant={isSidebarOpen ? "secondary" : "outline"}
+              onClick={() => setIsSidebarOpen(prev => !prev)}
+              className="h-11 px-4 text-xs font-medium rounded-xl gap-2 cursor-pointer border-slate-200 dark:border-slate-800"
+              title={isSidebarOpen ? "Collapse Review Cards" : "Show Review Cards"}
+            >
+              {isSidebarOpen ? <PanelRightClose className="w-4 h-4 text-slate-500" /> : <PanelRightOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+              <span>{isSidebarOpen ? "Hide Cards" : "Show Cards"}</span>
+            </Button>
+
+            <Button 
+              onClick={handleFinishReview}
+              className="bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 text-white rounded-xl shadow-sm gap-2 h-11 px-5 cursor-pointer"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Done • Back to Dashboard
+            </Button>
+          </div>
+        </div>
+
+
+        {/* TIER 1: THE EXECUTIVE SCORECARD                                    */}
+        {/* ================================================================== */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          
+          {/* Card 1: Score & Mastery */}
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden flex flex-col justify-between">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-xs uppercase font-semibold tracking-wider text-slate-500">
+                  Block Accuracy
+                </CardDescription>
+                <div className={`p-2 rounded-xl ${isPassing ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'}`}>
+                  {isExcellent ? <Trophy className="w-5 h-5" /> : <Award className="w-5 h-5" />}
+                </div>
+              </div>
+              <div className="flex items-baseline space-x-2 pt-2">
+                <span className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                  {accuracyPercentage.toFixed(1)}%
+                </span>
+                <span className="text-sm font-medium text-slate-500">
+                  ({correctCount} / {answeredCount || totalQuestions} correct)
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="flex items-center space-x-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                {isExcellent ? (
+                  <Badge className="bg-emerald-600 text-white border-none text-xs gap-1">
+                    <Sparkles className="w-3 h-3" /> High-Yield Mastery (≥{excellenceThreshold}%)
+                  </Badge>
+                ) : isPassing ? (
+                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 text-xs gap-1">
+                    <Check className="w-3 h-3" /> Passing Standard (≥{passingThreshold}%)
+                  </Badge>
+                ) : (
+                  <Badge className="bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-300 text-xs gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Needs Review (&lt;{passingThreshold}%)
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 2: Time & Pacing Analytics */}
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden flex flex-col justify-between">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-xs uppercase font-semibold tracking-wider text-slate-500">
+                  Pacing Analytics
+                </CardDescription>
+                <div className={`p-2 rounded-xl ${isOnPace ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'}`}>
+                  <Clock className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="flex items-baseline space-x-2 pt-2">
+                <span className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                  {averageSecondsPerQuestion}s
+                </span>
+                <span className="text-sm font-medium text-slate-500">
+                  / question avg
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                <span className="text-slate-500">
+                  Total: <strong className="text-slate-700 dark:text-slate-300">{Math.floor(totalTimeSeconds / 60)}m {totalTimeSeconds % 60}s</strong>
+                </span>
+                {isOnPace ? (
+                  <Badge variant="outline" className="border-emerald-300 text-emerald-700 dark:text-emerald-400 dark:border-emerald-800">
+                    Target Pace (≤{targetSeconds}s)
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-400 dark:border-amber-800">
+                    +{averageSecondsPerQuestion - targetSeconds}s Over Target ({targetSeconds}s)
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 3: Block Breakdown Distribution */}
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden flex flex-col justify-between">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-xs uppercase font-semibold tracking-wider text-slate-500">
+                  Question Distribution
+                </CardDescription>
+                <div className="p-2 rounded-xl bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="w-full pt-3">
+                {/* Segmented Bar */}
+                <div className="h-3 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                  <div 
+                    style={{ width: `${totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0}%` }}
+                    className="bg-emerald-500 h-full transition-all"
+                    title={`Correct: ${correctCount}`}
+                  />
+                  <div 
+                    style={{ width: `${totalQuestions > 0 ? (incorrectCount / totalQuestions) * 100 : 0}%` }}
+                    className="bg-rose-500 h-full transition-all"
+                    title={`Incorrect: ${incorrectCount}`}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">{correctCount} Correct</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">{incorrectCount} Incorrect</span>
+                </div>
+                {fastestSeconds > 0 && (
+                  <span className="text-slate-400 text-[11px]">
+                    Fastest: {fastestSeconds}s
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
+
+
+        {/* TIER 2: FILTER TABS & INTERACTIVE QUESTION MATRIX                  */}
+        {/* ================================================================== */}
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">
+                  Question Navigator
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500 mt-0.5">
+                  Click any question tile to inspect your answer, time spent, and learning pearls.
+                </CardDescription>
+              </div>
+
+              {/* Quick Filter Tabs */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/70 dark:border-slate-700/60 text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${reviewFilter === 'all' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
+                >
+                  All ({totalQuestions})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('incorrect')}
+                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${reviewFilter === 'incorrect' ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-rose-600'}`}
+                >
+                  <span>Incorrect</span>
+                  <span className="bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+                    {incorrectCount}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('correct')}
+                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${reviewFilter === 'correct' ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600'}`}
+                >
+                  <span>Correct</span>
+                  <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+                    {correctCount}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="pt-6">
+            {filteredQuestionIndexes.length === 0 ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                {reviewFilter === 'incorrect' ? '🎉 Amazing! Zero incorrect questions in this block.' : 'No questions found for this filter.'}
+              </div>
+            ) : (
+              <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2.5">
+                {filteredQuestionIndexes.map((qIdx) => {
+                  const att = attempts[qIdx]
+                  const isSelected = selectedReviewIndex === qIdx
+                  const isCorrect = att?.isCorrect === true
+                  const isAnswered = Boolean(att)
+
+                  let tileStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+
+                  if (isAnswered) {
+                    if (isCorrect) {
+                      tileStyle = 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/80 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100/60'
+                    } else {
+                      tileStyle = 'border-rose-300 dark:border-rose-800/80 bg-rose-50/80 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 hover:bg-rose-100/60'
+                    }
+                  }
+
+                  const ringStyle = isSelected ? 'ring-2 ring-indigo-600 ring-offset-2 dark:ring-offset-slate-900 font-bold shadow-sm scale-105 z-10' : ''
+
+                  return (
+                    <button
+                      key={qIdx}
+                      type="button"
+                      onClick={() => setSelectedReviewIndex(qIdx)}
+                      className={`relative flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs transition-all cursor-pointer ${tileStyle} ${ringStyle}`}
+                    >
+                      <span className="font-semibold">{qIdx + 1}</span>
+                      <span className="mt-0.5">
+                        {isAnswered ? (
+                          isCorrect ? (
+                            <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <X className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                          )
+                        ) : (
+                          <span className="text-[9px] text-slate-400">—</span>
+                        )}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+
+              <div className="space-y-6">
+                          {/* LEFT COLUMN: Question Details & Educational Rationale (7 cols) */}
+          <div>
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+              <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center space-x-3">
+                    <Badge className="px-2.5 py-1 text-xs bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                      Question {selectedReviewIndex + 1} of {totalQuestions}
+                    </Badge>
+                    {activeReviewQuestion?.subject && (
+                      <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 text-xs">
+                        {activeReviewQuestion.subject}
+                      </Badge>
+                    )}
+                    {activeReviewAttempt && (
+                      <Badge className={`text-xs ${activeReviewAttempt.isCorrect ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'}`}>
+                        {activeReviewAttempt.isCorrect ? 'Correct Attempt' : 'Missed Question'}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {activeReviewAttempt && (
+                    <div className="flex items-center space-x-1.5 text-xs text-slate-500">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Time spent: <strong className="text-slate-700 dark:text-slate-300">{activeReviewAttempt.timeSpent}s</strong></span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Question Vignette */}
+                <CardTitle className="text-base font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-4">
+                  {activeReviewQuestion?.question || activeReviewAttempt?.questionText || `Question ID: ${sessionData.question_ids[selectedReviewIndex]}`}
+                </CardTitle>
+              </CardHeader>
+
+              {/* Answer Options Breakdown */}
+              <CardContent className="space-y-3 pt-4">
+                {activeReviewQuestion?.options?.map((optText: string, optIdx: number) => {
+                  const wasChosen = activeReviewAttempt?.selectedOption === optIdx
+                  const wasCorrect = activeReviewAttempt?.correctOption === optIdx
+
+                  let optStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300'
+                  if (wasCorrect) {
+                    optStyle = 'border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200 ring-1 ring-emerald-500'
+                  } else if (wasChosen && !wasCorrect) {
+                    optStyle = 'border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-950/40 dark:text-rose-200 ring-1 ring-rose-500'
+                  }
+
+                  return (
+                    <div
+                      key={optIdx}
+                      className={`p-3.5 rounded-xl border flex items-start space-x-3 text-sm transition-all ${optStyle}`}
+                    >
+                      <span className="font-semibold text-xs tracking-wider uppercase mt-0.5 opacity-70">
+                        {String.fromCharCode(65 + optIdx)}.
+                      </span>
+                      <div className="flex-1 select-text">
+                        <span>{optText}</span>
+                      </div>
+                      {wasCorrect && (
+                        <Badge className="bg-emerald-600 text-white border-none text-[10px] uppercase tracking-wider ml-2">
+                          Correct Answer
+                        </Badge>
+                      )}
+                      {wasChosen && !wasCorrect && (
+                        <Badge className="bg-rose-600 text-white border-none text-[10px] uppercase tracking-wider ml-2">
+                          Your Choice
+                        </Badge>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Explanation section if available */}
+                {(activeReviewQuestion?.explanation || activeReviewAttempt?.explanation) && (
+                  <div className="mt-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-2">
+                    <div className="flex items-center space-x-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span>Official Educational Explanation</span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 select-text whitespace-pre-wrap">
+                      {activeReviewQuestion?.explanation || activeReviewAttempt?.explanation}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+              </div>
+            </>
+          ) : (
+            <>
       {/* Session Header */}
       <header className="w-full flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="flex items-center space-x-4">
@@ -198,74 +825,87 @@ export default function Session() {
           </div>
         </div>
         
-        <div className="flex items-center space-x-3 text-sm">
+        <div className="flex items-center space-x-2 sm:space-x-3 text-sm">
           <Badge variant="outline" className="px-3 py-1 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 bg-transparent">
             {Math.floor(timeSpent / 60)}:{(timeSpent % 60).toString().padStart(2, '0')}
           </Badge>
           <Badge className="px-3 py-1 bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-none">
             Question {currentIndex + 1} of {sessionData.question_ids.length}
           </Badge>
+          <Button
+            size="sm"
+            variant={isSidebarOpen ? "secondary" : "outline"}
+            onClick={() => setIsSidebarOpen(prev => !prev)}
+            className="h-8 px-2.5 text-xs font-medium rounded-lg gap-1.5 cursor-pointer border-slate-200 dark:border-slate-800"
+            title={isSidebarOpen ? "Collapse Pearls & Notes" : "Show Pearls & Notes"}
+          >
+            {isSidebarOpen ? <PanelRightClose className="w-3.5 h-3.5 text-slate-500" /> : <PanelRightOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
+            <span>{isSidebarOpen ? "Hide Pearls" : "Show Pearls"}</span>
+          </Button>
         </div>
       </header>
 
-      {/* Main Question Card (Made wider and cleaner) */}
-    <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
-        {/* ... Keep the CardHeader and everything inside exactly as it is ... */}
-      <CardHeader className="space-y-2">
-        {question?.subject && <Badge className="w-fit bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">{question.subject}</Badge>}
-        <CardTitle className="text-lg font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-2">
-          {question?.question}
-        </CardTitle>
-      </CardHeader>
+      {/* Main Question Card */}
+      <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="space-y-2">
+          {question?.subject && (
+            <Badge className="w-fit bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">
+              {question.subject}
+            </Badge>
+          )}
+          <CardTitle className="text-lg font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-2">
+            {question?.question}
+          </CardTitle>
+        </CardHeader>
 
-      <CardContent className="space-y-3">
-        {options.map((optText: string, idx: number) => {
-          const optionNumber = idx
-          const isSelected = selectedOption === optionNumber
-          const isStruck = struckOptions.includes(optionNumber)
+        <CardContent className="space-y-3">
+          {options.map((optText: string, idx: number) => {
+            const optionNumber = idx
+            const isSelected = selectedOption === optionNumber
+            const isStruck = struckOptions.includes(optionNumber)
 
-          let buttonStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+            let buttonStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
 
-          if (attemptResult) {
-            if (optionNumber === attemptResult.correct_option) {
-              buttonStyle = 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 ring-1 ring-emerald-500'
-            } else if (isSelected && !attemptResult.is_correct) {
-              buttonStyle = 'border-red-500 bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200 ring-1 ring-red-500'
-            } else {
-              buttonStyle = 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 text-slate-400 dark:text-slate-500 opacity-60'
+            if (attemptResult) {
+              if (optionNumber === attemptResult.correct_option) {
+                buttonStyle = 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 ring-1 ring-emerald-500'
+              } else if (isSelected && !attemptResult.is_correct) {
+                buttonStyle = 'border-red-500 bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200 ring-1 ring-red-500'
+              } else {
+                buttonStyle = 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 text-slate-400 dark:text-slate-500 opacity-60'
+              }
+            } else if (isSelected) {
+              buttonStyle = 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-200 ring-1 ring-blue-500'
             }
-          } else if (isSelected) {
-            buttonStyle = 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-200 ring-1 ring-blue-500'
-          }
 
-          return (
-            <button
-              key={optionNumber}
-              type="button"
-              onClick={() => handleSelectOption(optionNumber)}
-              onContextMenu={(e) => handleToggleStrike(e, optionNumber)}
-              disabled={Boolean(attemptResult)}
-              className={`w-full text-left p-4 rounded-lg border transition-all flex items-start space-x-3 cursor-pointer ${buttonStyle} ${
-                isStruck && !attemptResult ? 'line-through opacity-40 text-slate-400 dark:text-slate-600' : ''
-              }`}
-            >
-              <span className="font-semibold text-xs tracking-wider uppercase mt-0.5 opacity-70 select-none">
-                {String.fromCharCode(65 + idx)}.
-              </span>
-              <span className="flex-1 text-sm leading-relaxed select-text">{optText}</span>
-            </button>
-          )
-        })}
-      </CardContent>
+            return (
+              <button
+                key={optionNumber}
+                type="button"
+                onClick={() => handleSelectOption(optionNumber)}
+                onContextMenu={(e) => handleToggleStrike(e, optionNumber)}
+                disabled={Boolean(attemptResult)}
+                className={`w-full text-left p-4 rounded-lg border transition-all flex items-start space-x-3 cursor-pointer ${buttonStyle} ${
+                  isStruck && !attemptResult ? 'line-through opacity-40 text-slate-400 dark:text-slate-600' : ''
+                }`}
+              >
+                <span className="font-semibold text-xs tracking-wider uppercase mt-0.5 opacity-70 select-none">
+                  {String.fromCharCode(65 + idx)}.
+                </span>
+                <span className="flex-1 text-sm leading-relaxed select-text">{optText}</span>
+              </button>
+            )
+          })}
+        </CardContent>
 
-      <CardFooter className="flex justify-end border-t border-slate-100 dark:border-slate-800/80 pt-4">
+        <CardFooter className="flex justify-end border-t border-slate-100 dark:border-slate-800/80 pt-4">
           {!attemptResult ? (
             <Button onClick={handleSubmit} disabled={selectedOption === null || attemptMutation.isPending} className="bg-emerald-600 hover:bg-emerald-500 text-white">
               {attemptMutation.isPending ? 'Checking...' : 'Submit Answer'}
             </Button>
           ) : (
             <Button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 text-white">
-              {currentIndex + 1 >= sessionData.question_ids.length ? 'Finish Session' : 'Next Question →'}
+              {currentIndex + 1 >= sessionData.question_ids.length ? 'Finish & Review Block →' : 'Next Question →'}
             </Button>
           )}
         </CardFooter>
@@ -285,7 +925,7 @@ export default function Session() {
           </CardHeader>
           <CardContent>
             {question?.explanation ? (
-              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 whitespace-pre-wrap select-text">
                 {question.explanation}
               </p>
             ) : (
@@ -301,6 +941,270 @@ export default function Session() {
           </CardContent>
         </Card>
       )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* PERSISTENT RIGHT SIDEBAR */}
+      {isSidebarOpen && (
+        <div className="w-full lg:w-[35%] xl:w-[32%] border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 lg:h-full lg:overflow-y-auto flex-shrink-0 bg-white dark:bg-slate-900 rounded-2xl lg:rounded-none pb-10 lg:pb-0 animate-in fade-in duration-300">
+          <div className="p-4 space-y-4">
+            {/* RIGHT COLUMN: REVIEW CARDS & NOTES WORKSPACE (5 cols) */}
+            <div>
+              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+                <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+                        <Layers className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
+                          Review Cards & Pearls
+                        </CardTitle>
+                        <CardDescription className="text-xs text-slate-500">
+                          Context for Question #{activeSidebarIndex + 1}
+                        </CardDescription>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsAddingNote(prev => !prev)}
+                        className="text-xs h-8 px-2.5 rounded-lg border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        <span>Add Note</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        title="Collapse sidebar"
+                      >
+                        <PanelRightClose className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                {/* Interactive Search Bar */}
+                <div className="relative mt-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={cardSearchQuery}
+                    onChange={(e) => setCardSearchQuery(e.target.value)}
+                    placeholder="Search cards, concepts, drugs..."
+                    className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
+                  {cardSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setCardSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Filter Chips */}
+                <div className="flex items-center gap-1.5 mt-3 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
+                  {(['all', 'high-yield', 'pharmacology', 'pathology', 'notes'] as const).map(tag => {
+                    const isActive = cardFilterTag === tag
+                    const labelMap = {
+                      all: `All (${reviewCards.length})`,
+                      'high-yield': 'High-Yield',
+                      pharmacology: 'Pharm',
+                      pathology: 'Pathology',
+                      notes: `My Notes (${sessionNotes[activeSidebarIndex]?.length || 0})`
+                    }
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => setCardFilterTag(tag)}
+                        className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                            : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        {labelMap[tag]}
+                      </button>
+                    )
+                  })}
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-4 space-y-3.5 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {/* Inline Note Composer */}
+                {isAddingNote && (
+                  <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 space-y-2.5 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs font-semibold text-indigo-900 dark:text-indigo-300">
+                      <span className="flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        Quick Note for Question #{activeSidebarIndex + 1}
+                      </span>
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={newNoteText}
+                      onChange={(e) => setNewNoteText(e.target.value)}
+                      placeholder="Type personal clinical takeaway, mnemonic, or reminder..."
+                      className="w-full p-2.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/80 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <div className="flex justify-end items-center space-x-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setNewNoteText('')
+                          setIsAddingNote(false)
+                        }}
+                        className="h-7 px-2.5 text-xs text-slate-500 hover:text-slate-700"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleAddNote}
+                        disabled={!newNoteText.trim()}
+                        className="h-7 px-3 text-xs bg-indigo-600 hover:bg-indigo-500 text-white"
+                      >
+                        Save Note
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cards List */}
+                {filteredCards.length === 0 ? (
+                  <div className="py-10 text-center space-y-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {cardSearchQuery 
+                        ? `No cards found matching "${cardSearchQuery}"` 
+                        : 'No cards in this category yet.'}
+                    </p>
+                    {cardSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setCardSearchQuery('')}
+                        className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+                      >
+                        Clear search query
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  filteredCards.map(card => {
+                    const isRevealed = revealedCardIds[card.id] ?? false
+                    const isBookmarked = bookmarkedCardIds[card.id] ?? false
+                    const isCopied = copiedCardId === card.id
+
+                    const badgeStyles = {
+                      'high-yield': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+                      pharmacology: 'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300 border-violet-200 dark:border-violet-800',
+                      pathology: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+                      notes: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+                    }[card.category]
+
+                    return (
+                      <div
+                        key={card.id}
+                        className="p-3.5 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition-all space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <Badge className={`text-[10px] px-2 py-0.5 border ${badgeStyles}`}>
+                            {card.categoryLabel}
+                          </Badge>
+                          <div className="flex items-center space-x-1">
+                            <button
+                              type="button"
+                              title={isBookmarked ? 'Bookmarked' : 'Bookmark card'}
+                              onClick={() => setBookmarkedCardIds(prev => ({ ...prev, [card.id]: !isBookmarked }))}
+                              className="p-1 rounded-md text-slate-400 hover:text-amber-500 transition-colors cursor-pointer"
+                            >
+                              {isBookmarked ? (
+                                <BookmarkCheck className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+                              ) : (
+                                <Bookmark className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              title="Copy concept"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${card.title}
+${card.front}
+${card.back}`)
+                                setCopiedCardId(card.id)
+                                setTimeout(() => setCopiedCardId(null), 1800)
+                              }}
+                              className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                            >
+                              {isCopied ? (
+                                <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                            {card.isCustomNote && typeof card.noteIndex === 'number' && (
+                              <button
+                                type="button"
+                                title="Delete note"
+                                onClick={() => handleDeleteNote(card.noteIndex!)}
+                                className="p-1 rounded-md text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-xs font-semibold text-slate-900 dark:text-white leading-snug">
+                            {card.title}
+                          </h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed select-text">
+                            {card.front}
+                          </p>
+                        </div>
+
+                        {!card.isCustomNote && (
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                            <button
+                              type="button"
+                              onClick={() => setRevealedCardIds(prev => ({ ...prev, [card.id]: !isRevealed }))}
+                              className="w-full flex items-center justify-between text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 select-none py-0.5 cursor-pointer"
+                            >
+                              <span>{isRevealed ? 'Hide Clinical Pearl' : 'Reveal Clinical Pearl'}</span>
+                              {isRevealed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            </button>
+
+                            {isRevealed && (
+                              <div className="mt-2 p-2.5 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/30 text-xs text-indigo-950 dark:text-indigo-200 leading-relaxed border border-indigo-100 dark:border-indigo-900/50 animate-in fade-in duration-200 select-text">
+                                {card.back}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+        </div>
+      </div>
+      )}
+
     </div>
   )
 }

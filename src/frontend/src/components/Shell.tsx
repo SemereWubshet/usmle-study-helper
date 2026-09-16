@@ -7,11 +7,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme()
   const location = useLocation()
 
+  const isSession = location.pathname.startsWith('/session')
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <div className={`bg-slate-50 dark:bg-slate-950 transition-colors duration-300 ${isSession ? 'h-screen overflow-hidden flex flex-col' : 'min-h-screen'}`}>
       {/* Floating Top Navigation */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex justify-center p-4">
-        <nav className="flex items-center justify-between w-full max-w-4xl px-6 py-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-full shadow-sm">
+      <div className="fixed top-0 left-0 right-0 z-50 flex justify-center p-4 pointer-events-none">
+        <nav className="pointer-events-auto flex items-center justify-between w-full max-w-4xl px-6 py-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-full shadow-sm">
           
           <div className="flex items-center space-x-6">
             <Link to="/" className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold tracking-tight">
@@ -52,9 +54,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content Area */}
-      <main className="pt-24 pb-12 px-4 md:px-8 max-w-5xl mx-auto">
-        {children}
-      </main>
+      {isSession ? (
+        <main className="pt-20 pb-2 px-3 sm:px-6 lg:px-8 w-full max-w-[1920px] mx-auto flex-1 h-[calc(100vh-5rem)] overflow-hidden flex flex-col">
+          {children}
+        </main>
+      ) : (
+        <main className="pt-24 pb-12 px-4 md:px-8 max-w-5xl mx-auto">
+          {children}
+        </main>
+      )}
     </div>
   )
 }
