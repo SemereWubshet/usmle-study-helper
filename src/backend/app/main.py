@@ -23,8 +23,8 @@ from .models import (
     EncyclopediaResponse, EncyclopediaSection
 )
 
-APP_VERSION = "0.2.0"
-MIN_FRONTEND_VERSION = "0.2.0"
+APP_VERSION = "0.4.0"
+MIN_FRONTEND_VERSION = "0.4.0"
 LAST_HEARTBEAT = time.time()
 WATCHDOG_TIMEOUT_SECONDS = 120
 WATCHDOG_GRACE_PERIOD = 120

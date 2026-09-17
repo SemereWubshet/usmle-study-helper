@@ -25,6 +25,7 @@
 * **Hosted Web UI ([usmle.semere.dev](https://usmle.semere.dev)):** Always up-to-date, modern React interface with dark mode, strike-through options, block timers, and high-yield analytics.
 * **Portable Desktop Engine:** Runs quietly on your local computer via a standalone executable. Your study history, performance metrics, and question attempts **never leave your laptop**.
 * **Zero Telemetry / Zero Cloud Storage:** You own your SQLite database in a simple portable folder. Backing up your entire study history is as easy as copying one folder to a USB drive.
+* **MedSearch (NIH Integration):** Query the official U.S. National Library of Medicine (MedlinePlus) directly inside your question review drawer for concise topic summaries, symptoms, causes, and treatments.
 
 ---
 
@@ -105,7 +106,7 @@ pip install fastapi uvicorn pydantic pyinstaller
 # Run the local engine
 python launcher.py
 ```
-* Interactive API docs will be available at: `https://usmle-local-usmle-local-engine.semere.dev:8000/docs` (or `http://127.0.0.1:8000/docs`).
+* Interactive API docs will be available at: `https://usmle-local-engine.semere.dev:8000/docs` (or `http://127.0.0.1:8000/docs`).
 
 ### 3. Frontend Setup
 In a separate terminal:
