@@ -1,16 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchQuestion, submitSessionAttempt, completeSession } from '../api'
+import { 
+  fetchQuestion, 
+  submitSessionAttempt, 
+  completeSession, 
+  fetchEncyclopedia, 
+  type EncyclopediaEntry 
+} from '../api'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { 
-  Trophy, Clock, BookOpen, AlertTriangle, Layers, Check, X,
+  Trophy, Clock, BookOpen, AlertTriangle, Check, X,
   Award, Sparkles, LayoutDashboard, BarChart3,
-  Search, Plus, Bookmark, BookmarkCheck, Copy, CheckCheck,
-  FileText, Trash2, ChevronDown, ChevronUp, PanelRightClose, PanelRightOpen
+  Search, PanelRightClose, PanelRightOpen
 } from 'lucide-react'
 
 // ============================================================================
@@ -67,21 +72,18 @@ export default function Session() {
   const [reviewFilter, setReviewFilter] = useState<'all' | 'incorrect' | 'correct'>('all')
   const [selectedReviewIndex, setSelectedReviewIndex] = useState<number>(0)
 
-  // Review Mode: Cards & Notes Workspace state
-  const [cardSearchQuery, setCardSearchQuery] = useState('')
-  const [cardFilterTag, setCardFilterTag] = useState<'all' | 'high-yield' | 'pharmacology' | 'pathology' | 'notes'>('all')
-  const [revealedCardIds, setRevealedCardIds] = useState<Record<string, boolean>>({})
-  const [bookmarkedCardIds, setBookmarkedCardIds] = useState<Record<string, boolean>>({})
-  const [copiedCardId, setCopiedCardId] = useState<string | null>(null)
+  // Review Mode: MedSearch state (query executes on Enter or button click)
+  const [searchInput, setSearchInput] = useState('')
+  const [submittedQuery, setSubmittedQuery] = useState('')
 
-  // Personal study notes per question (persisted to localStorage)
-  const [sessionNotes, setSessionNotes] = useState<Record<number, string[]>>(() => {
-    if (!sessionData?.session_id) return {}
-    const saved = localStorage.getItem(`usmle_session_notes_${sessionData.session_id}`)
-    return saved ? JSON.parse(saved) : {}
-  })
-  const [isAddingNote, setIsAddingNote] = useState(false)
-  const [newNoteText, setNewNoteText] = useState('')
+  // MedlinePlus Query via React Query (triggers on submittedQuery)
+  const { data: encyclopediaEntries = [], isLoading: isLoadingEncyclopedia, isFetched: isFetchedEncyclopedia } = useQuery<EncyclopediaEntry[]>({
+    queryKey: ['encyclopedia', submittedQuery],
+    queryFn: () => fetchEncyclopedia(submittedQuery),
+    enabled: submittedQuery.trim().length >= 2,
+    staleTime: 1000 * 60 * 10, // Cache for 10 minutes in memory
+  });
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   // State for block progression and timing, restored from localStorage if available
@@ -213,29 +215,7 @@ export default function Session() {
     }
   }
 
-  const handleAddNote = () => {
-    if (!newNoteText.trim() || !sessionData?.session_id) return
-    const currentList = sessionNotes[selectedReviewIndex] || []
-    const updated = {
-      ...sessionNotes,
-      [selectedReviewIndex]: [...currentList, newNoteText.trim()]
-    }
-    setSessionNotes(updated)
-    localStorage.setItem(`usmle_session_notes_${sessionData.session_id}`, JSON.stringify(updated))
-    setNewNoteText('')
-    setIsAddingNote(false)
-  }
 
-  const handleDeleteNote = (noteIdx: number) => {
-    if (!sessionData?.session_id) return
-    const currentList = sessionNotes[selectedReviewIndex] || []
-    const updated = {
-      ...sessionNotes,
-      [selectedReviewIndex]: currentList.filter((_, i) => i !== noteIdx)
-    }
-    setSessionNotes(updated)
-    localStorage.setItem(`usmle_session_notes_${sessionData.session_id}`, JSON.stringify(updated))
-  }
 
   const handleFinishReview = () => {
     if (sessionData?.session_id) {
@@ -332,94 +312,9 @@ export default function Session() {
   const excellenceThreshold = sessionData?.customConfig?.excellenceThreshold ?? EXCELLENT_ACCURACY_THRESHOLD
   const targetSeconds = sessionData?.customConfig?.targetSeconds ?? TARGET_SECONDS_PER_QUESTION
 
-  // Generate contextual cards for active question + user notes
-  const activeSidebarIndex = isReviewMode ? selectedReviewIndex : currentIndex;
 
-  const reviewCards = useMemo(() => {
-    const cards: Array<{
-      id: string;
-      category: 'high-yield' | 'pharmacology' | 'pathology' | 'notes';
-      categoryLabel: string;
-      title: string;
-      front: string;
-      back: string;
-      isCustomNote?: boolean;
-      noteIndex?: number;
-    }> = []
 
-    const qSubject = isReviewMode ? (activeReviewQuestion?.subject || activeReviewAttempt?.subject) : question?.subject;
-    const finalSubject = qSubject || 'Clinical Medicine';
-    
-    const correctOpt = isReviewMode ? activeReviewAttempt?.correctOption : attemptResult?.correct_option;
-    const qCorrectText = isReviewMode ? (activeReviewQuestion?.correct_text || activeReviewAttempt?.correctText) : question?.correct_text;
-    const finalCorrect = qCorrectText || (correctOpt !== undefined ? `Option ${String.fromCharCode(65 + correctOpt)}` : 'Correct Answer');
-    
-    const qExplanation = isReviewMode ? (activeReviewQuestion?.explanation || activeReviewAttempt?.explanation) : (attemptResult?.explanation || question?.explanation);
-    const finalExplanation = qExplanation || '';
 
-    cards.push({
-      id: `card-pearl-${activeSidebarIndex}`,
-      category: 'high-yield',
-      categoryLabel: 'High-Yield Pearl',
-      title: `${finalSubject} • Core Presentation`,
-      front: `What is the key diagnostic takeaway or primary concept tested in Question #${activeSidebarIndex + 1}?`,
-      back: finalExplanation 
-        ? (finalExplanation.length > 280 ? finalExplanation.slice(0, 280) + '...' : finalExplanation)
-        : `Primary High-Yield Concept: ${finalCorrect}. Make sure to recognize this classical presentation on exam day.`
-    })
-
-    cards.push({
-      id: `card-pharm-${activeSidebarIndex}`,
-      category: 'pharmacology',
-      categoryLabel: 'Pharmacology & Mechanism',
-      title: 'Mechanism of Action & Therapeutics',
-      front: `What is the first-line therapy or pharmacological mechanism associated with ${finalCorrect.slice(0, 35)}?`,
-      back: `Review receptor binding, enzyme inhibition, or biochemical pathways related to ${finalCorrect}. Note common contraindications and high-yield adverse effects.`
-    })
-
-    cards.push({
-      id: `card-path-${activeSidebarIndex}`,
-      category: 'pathology',
-      categoryLabel: 'Diagnostic Differential',
-      title: 'Distractor Traps & Differential',
-      front: `Why might another choice have seemed plausible, and what key feature rules it out?`,
-      back: `Exam vignettes often include distractors with overlapping symptoms. Focus on age, onset speed, laboratory flags, and biopsy/imaging findings to definitively differentiate.`
-    })
-
-    const notesForQ = sessionNotes[activeSidebarIndex] || []
-    notesForQ.forEach((note, nIdx) => {
-      cards.push({
-        id: `card-note-${activeSidebarIndex}-${nIdx}`,
-        category: 'notes',
-        categoryLabel: 'My Note',
-        title: `Study Note #${nIdx + 1}`,
-        front: note,
-        back: note,
-        isCustomNote: true,
-        noteIndex: nIdx
-      })
-    })
-
-    return cards
-  }, [isReviewMode, activeReviewQuestion, activeReviewAttempt, question, attemptResult, activeSidebarIndex, sessionNotes])
-
-  const filteredCards = useMemo(() => {
-    return reviewCards.filter(card => {
-      if (cardFilterTag !== 'all' && card.category !== cardFilterTag) {
-        return false
-      }
-      if (cardSearchQuery.trim()) {
-        const q = cardSearchQuery.toLowerCase()
-        return (
-          card.title.toLowerCase().includes(q) ||
-          card.front.toLowerCase().includes(q) ||
-          card.back.toLowerCase().includes(q) ||
-          card.categoryLabel.toLowerCase().includes(q)
-        )
-      }
-      return true
-    })
-  }, [reviewCards, cardFilterTag, cardSearchQuery])
 
   // ==========================================================================
   // UNIFIED RENDER: APP SHELL WITH RIGHT SIDEBAR
@@ -457,7 +352,7 @@ export default function Session() {
               </span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Session Scorecard & Review
+              Session Review
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Review question rationales, pacing metrics, and explore high-yield concept cards.
@@ -837,10 +732,10 @@ export default function Session() {
             variant={isSidebarOpen ? "secondary" : "outline"}
             onClick={() => setIsSidebarOpen(prev => !prev)}
             className="h-8 px-2.5 text-xs font-medium rounded-lg gap-1.5 cursor-pointer border-slate-200 dark:border-slate-800"
-            title={isSidebarOpen ? "Collapse Pearls & Notes" : "Show Pearls & Notes"}
+            title={isSidebarOpen ? "Collapse MedSearch" : "Show MedSearch"}
           >
             {isSidebarOpen ? <PanelRightClose className="w-3.5 h-3.5 text-slate-500" /> : <PanelRightOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
-            <span>{isSidebarOpen ? "Hide Pearls" : "Show Pearls"}</span>
+            <span>{isSidebarOpen ? "Hide MedSearch" : "Show MedSearch"}</span>
           </Button>
         </div>
       </header>
@@ -950,35 +845,26 @@ export default function Session() {
       {isSidebarOpen && (
         <div className="w-full lg:w-[35%] xl:w-[32%] border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 lg:h-full lg:overflow-y-auto flex-shrink-0 bg-white dark:bg-slate-900 rounded-2xl lg:rounded-none pb-10 lg:pb-0 animate-in fade-in duration-300">
           <div className="p-4 space-y-4">
-            {/* RIGHT COLUMN: REVIEW CARDS & NOTES WORKSPACE (5 cols) */}
+            {/* RIGHT COLUMN: MEDSEARCH WORKSPACE */}
             <div>
               <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
                 <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2.5">
                       <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
-                        <Layers className="w-5 h-5" />
+                        <Search className="w-5 h-5" />
                       </div>
-                      <div>
+                      <div className="flex items-center space-x-2">
                         <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
-                          Review Cards & Pearls
+                          MedSearch
                         </CardTitle>
-                        <CardDescription className="text-xs text-slate-500">
-                          Context for Question #{activeSidebarIndex + 1}
-                        </CardDescription>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                          🏛️ MedlinePlus • NIH
+                        </span>
                       </div>
                     </div>
 
                     <div className="flex items-center space-x-1.5">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsAddingNote(prev => !prev)}
-                        className="text-xs h-8 px-2.5 rounded-lg border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                        <span>Add Note</span>
-                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -991,215 +877,96 @@ export default function Session() {
                     </div>
                   </div>
 
-                {/* Interactive Search Bar */}
-                <div className="relative mt-4">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={cardSearchQuery}
-                    onChange={(e) => setCardSearchQuery(e.target.value)}
-                    placeholder="Search cards, concepts, drugs..."
-                    className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                  />
-                  {cardSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setCardSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                  {/* Interactive Search Bar - triggers on Enter or clicking Search */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      if (searchInput.trim()) {
+                        setSubmittedQuery(searchInput.trim())
+                      }
+                    }}
+                    className="relative mt-4 flex items-center gap-2"
+                  >
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        placeholder="Search conditions, diseases, symptoms (press Enter)..."
+                        className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                      />
+                      {searchInput && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchInput('')
+                            setSubmittedQuery('')
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!searchInput.trim() || isLoadingEncyclopedia}
+                      className="text-xs h-8 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium cursor-pointer"
                     >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                      Search
+                    </Button>
+                  </form>
+                </CardHeader>
+
+                <CardContent className="p-4 space-y-3.5 max-h-[calc(100vh-220px)] overflow-y-auto">
+                  {/* Loading indicator */}
+                  {isLoadingEncyclopedia && (
+                    <div className="p-6 text-xs text-slate-500 flex flex-col items-center justify-center gap-2 text-center">
+                      <Sparkles className="w-5 h-5 animate-spin text-indigo-500" />
+                      <span>Consulting National Library of Medicine...</span>
+                    </div>
                   )}
-                </div>
 
-                {/* Category Filter Chips */}
-                <div className="flex items-center gap-1.5 mt-3 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
-                  {(['all', 'high-yield', 'pharmacology', 'pathology', 'notes'] as const).map(tag => {
-                    const isActive = cardFilterTag === tag
-                    const labelMap = {
-                      all: `All (${reviewCards.length})`,
-                      'high-yield': 'High-Yield',
-                      pharmacology: 'Pharm',
-                      pathology: 'Pathology',
-                      notes: `My Notes (${sessionNotes[activeSidebarIndex]?.length || 0})`
-                    }
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => setCardFilterTag(tag)}
-                        className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer ${
-                          isActive
-                            ? 'bg-indigo-600 text-white shadow-xs font-semibold'
-                            : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                        }`}
-                      >
-                        {labelMap[tag]}
-                      </button>
-                    )
-                  })}
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-4 space-y-3.5 max-h-[calc(100vh-280px)] overflow-y-auto">
-                {/* Inline Note Composer */}
-                {isAddingNote && (
-                  <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 space-y-2.5 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between text-xs font-semibold text-indigo-900 dark:text-indigo-300">
-                      <span className="flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                        Quick Note for Question #{activeSidebarIndex + 1}
-                      </span>
+                  {/* Search results */}
+                  {!isLoadingEncyclopedia && encyclopediaEntries.length > 0 && (
+                    <div className="space-y-3">
+                      {encyclopediaEntries.map((entry, idx) => (
+                        <EncyclopediaCard key={idx} entry={entry} />
+                      ))}
                     </div>
-                    <textarea
-                      rows={2}
-                      value={newNoteText}
-                      onChange={(e) => setNewNoteText(e.target.value)}
-                      placeholder="Type personal clinical takeaway, mnemonic, or reminder..."
-                      className="w-full p-2.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/80 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                    <div className="flex justify-end items-center space-x-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setNewNoteText('')
-                          setIsAddingNote(false)
-                        }}
-                        className="h-7 px-2.5 text-xs text-slate-500 hover:text-slate-700"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleAddNote}
-                        disabled={!newNoteText.trim()}
-                        className="h-7 px-3 text-xs bg-indigo-600 hover:bg-indigo-500 text-white"
-                      >
-                        Save Note
-                      </Button>
+                  )}
+
+                  {/* Empty state when query was submitted but no topic was found */}
+                  {!isLoadingEncyclopedia && isFetchedEncyclopedia && submittedQuery && encyclopediaEntries.length === 0 && (
+                    <div className="py-12 text-center space-y-2">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                        No MedlinePlus topics found for "{submittedQuery}".
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Try searching for the official disease name, pathogen, or clinical concept (e.g. "Kawasaki disease", "Aortic stenosis", "Chlamydia").
+                      </p>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Cards List */}
-                {filteredCards.length === 0 ? (
-                  <div className="py-10 text-center space-y-2">
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {cardSearchQuery 
-                        ? `No cards found matching "${cardSearchQuery}"` 
-                        : 'No cards in this category yet.'}
-                    </p>
-                    {cardSearchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setCardSearchQuery('')}
-                        className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-                      >
-                        Clear search query
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  filteredCards.map(card => {
-                    const isRevealed = revealedCardIds[card.id] ?? false
-                    const isBookmarked = bookmarkedCardIds[card.id] ?? false
-                    const isCopied = copiedCardId === card.id
-
-                    const badgeStyles = {
-                      'high-yield': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-                      pharmacology: 'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300 border-violet-200 dark:border-violet-800',
-                      pathology: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-                      notes: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-                    }[card.category]
-
-                    return (
-                      <div
-                        key={card.id}
-                        className="p-3.5 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition-all space-y-2.5"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <Badge className={`text-[10px] px-2 py-0.5 border ${badgeStyles}`}>
-                            {card.categoryLabel}
-                          </Badge>
-                          <div className="flex items-center space-x-1">
-                            <button
-                              type="button"
-                              title={isBookmarked ? 'Bookmarked' : 'Bookmark card'}
-                              onClick={() => setBookmarkedCardIds(prev => ({ ...prev, [card.id]: !isBookmarked }))}
-                              className="p-1 rounded-md text-slate-400 hover:text-amber-500 transition-colors cursor-pointer"
-                            >
-                              {isBookmarked ? (
-                                <BookmarkCheck className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
-                              ) : (
-                                <Bookmark className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              title="Copy concept"
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${card.title}
-${card.front}
-${card.back}`)
-                                setCopiedCardId(card.id)
-                                setTimeout(() => setCopiedCardId(null), 1800)
-                              }}
-                              className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                            >
-                              {isCopied ? (
-                                <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                            {card.isCustomNote && typeof card.noteIndex === 'number' && (
-                              <button
-                                type="button"
-                                title="Delete note"
-                                onClick={() => handleDeleteNote(card.noteIndex!)}
-                                className="p-1 rounded-md text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="text-xs font-semibold text-slate-900 dark:text-white leading-snug">
-                            {card.title}
-                          </h4>
-                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed select-text">
-                            {card.front}
-                          </p>
-                        </div>
-
-                        {!card.isCustomNote && (
-                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                            <button
-                              type="button"
-                              onClick={() => setRevealedCardIds(prev => ({ ...prev, [card.id]: !isRevealed }))}
-                              className="w-full flex items-center justify-between text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 select-none py-0.5 cursor-pointer"
-                            >
-                              <span>{isRevealed ? 'Hide Clinical Pearl' : 'Reveal Clinical Pearl'}</span>
-                              {isRevealed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                            </button>
-
-                            {isRevealed && (
-                              <div className="mt-2 p-2.5 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/30 text-xs text-indigo-950 dark:text-indigo-200 leading-relaxed border border-indigo-100 dark:border-indigo-900/50 animate-in fade-in duration-200 select-text">
-                                {card.back}
-                              </div>
-                            )}
-                          </div>
-                        )}
+                  {/* Initial prompt state before searching */}
+                  {!submittedQuery && !isLoadingEncyclopedia && (
+                    <div className="py-14 text-center space-y-2 px-4">
+                      <div className="w-10 h-10 mx-auto rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                        <Search className="w-5 h-5" />
                       </div>
-                    )
-                  })
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Quick Medical Topic Search
+                      </p>
+                      <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
+                        Type any disease, condition, or clinical term and press <strong>Enter</strong> to fetch official NIH topic overviews, symptoms, causes, and treatments.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
         </div>
       </div>
@@ -1207,4 +974,72 @@ ${card.back}`)
 
     </div>
   )
+}
+
+interface EncyclopediaCardProps {
+  entry: EncyclopediaEntry;
+}
+
+function EncyclopediaCard({ entry }: EncyclopediaCardProps) {
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden p-4 space-y-3">
+      {/* Header: Title on Left, Official Link on Right */}
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
+            {entry.title}
+          </h4>
+          <a
+            href={entry.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 shrink-0"
+          >
+            Official Topic &rarr;
+          </a>
+        </div>
+        {entry.alt_titles && entry.alt_titles.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {entry.alt_titles.slice(0, 3).map((alt, idx) => (
+              <span
+                key={idx}
+                className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+              >
+                {alt}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Sections Accordion */}
+      <div className="space-y-2 text-xs">
+        {entry.sections && entry.sections.length > 0 ? (
+          entry.sections.map((sec, idx) => (
+            <details
+              key={idx}
+              open={idx === 0}
+              className="group border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-slate-50/50 dark:bg-slate-800/30"
+            >
+              <summary className="cursor-pointer font-medium p-2.5 bg-slate-100/60 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 select-none hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                {sec.heading}
+              </summary>
+              <div 
+                className="p-3 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 leading-relaxed border-t border-slate-100 dark:border-slate-800 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_li]:mb-1 [&_p]:my-1.5 [&_a]:text-indigo-600 dark:[&_a]:text-indigo-400 [&_a]:underline"
+                dangerouslySetInnerHTML={{ __html: sec.body }}
+              />
+            </details>
+          ))
+        ) : (
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            {entry.summary}
+          </p>
+        )}
+      </div>
+
+      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 text-[10px] text-slate-400">
+        Source: U.S. National Library of Medicine
+      </div>
+    </div>
+  );
 }

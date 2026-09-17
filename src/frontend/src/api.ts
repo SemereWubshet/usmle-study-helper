@@ -101,3 +101,25 @@ export const completeSession = async (sessionId: number) => {
   if (!res.ok) throw new Error('Failed to mark session complete');
   return res.json();
 };
+
+// --- MedlinePlus / Encyclopedia Models & API ---
+export interface EncyclopediaSection {
+  heading: string;
+  body: string;
+  clean_text: string;
+}
+
+export interface EncyclopediaEntry {
+  title: string;
+  url: string;
+  summary: string;
+  alt_titles: string[];
+  sections: EncyclopediaSection[];
+}
+
+export const fetchEncyclopedia = async (term: string): Promise<EncyclopediaEntry[]> => {
+  if (!term || term.trim().length < 2) return [];
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/encyclopedia?term=${encodeURIComponent(term.trim())}`);
+  if (!res.ok) throw new Error(`Encyclopedia lookup failed with status ${res.status}`);
+  return res.json();
+};

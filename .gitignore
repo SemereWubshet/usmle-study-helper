@@ -33,6 +33,8 @@ node_modules/
 dist/
 .cache/
 *.parquet
+*.apkg
+lab/data/
 
 
 # Venv, env, and others

@@ -70,3 +70,16 @@ class DashboardOut(BaseModel):
     global_accuracy: float
     recent_sessions: List[SessionSummary]
     subject_performance: List[SubjectPerformance]
+
+# --- Encyclopedia / MedlinePlus Models ---
+class EncyclopediaSection(BaseModel):
+    heading: str
+    body: str
+    clean_text: str
+
+class EncyclopediaResponse(BaseModel):
+    title: str
+    url: str
+    summary: str
+    alt_titles: List[str] = []
+    sections: List[EncyclopediaSection] = []
