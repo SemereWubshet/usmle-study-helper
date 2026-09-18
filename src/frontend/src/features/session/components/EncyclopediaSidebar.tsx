@@ -1,0 +1,208 @@
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Search, Sparkles, PanelRightClose, X } from 'lucide-react'
+import type { EncyclopediaEntry } from '../../../api'
+
+interface EncyclopediaSidebarProps {
+  searchInput: string;
+  onSearchInputChange: (val: string) => void;
+  submittedQuery: string;
+  onSearchSubmit: (e: React.FormEvent) => void;
+  onClearSearch: () => void;
+  onCloseSidebar: () => void;
+  isLoading: boolean;
+  isFetched: boolean;
+  entries: EncyclopediaEntry[];
+}
+
+export function EncyclopediaSidebar({
+  searchInput,
+  onSearchInputChange,
+  submittedQuery,
+  onSearchSubmit,
+  onClearSearch,
+  onCloseSidebar,
+  isLoading,
+  isFetched,
+  entries,
+}: EncyclopediaSidebarProps) {
+  return (
+    <div className="w-full lg:w-[35%] xl:w-[32%] border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 lg:h-full lg:overflow-y-auto flex-shrink-0 bg-white dark:bg-slate-900 rounded-2xl lg:rounded-none pb-10 lg:pb-0 animate-in fade-in duration-300">
+      <div className="p-4 space-y-4">
+        <div>
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+                    <Search className="w-5 h-5" />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
+                      MedSearch
+                    </CardTitle>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                      🏛️ MedlinePlus • NIH
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-1.5">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={onCloseSidebar}
+                    className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    title="Collapse sidebar"
+                  >
+                    <PanelRightClose className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Interactive Search Bar */}
+              <form onSubmit={onSearchSubmit} className="relative mt-4 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => onSearchInputChange(e.target.value)}
+                    placeholder="Search conditions, diseases, symptoms (press Enter)..."
+                    className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
+                  {searchInput && (
+                    <button
+                      type="button"
+                      onClick={onClearSearch}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!searchInput.trim() || isLoading}
+                  className="text-xs h-8 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium cursor-pointer"
+                >
+                  Search
+                </Button>
+              </form>
+            </CardHeader>
+
+            <CardContent className="p-4 space-y-3.5 max-h-[calc(100vh-220px)] overflow-y-auto">
+              {isLoading && (
+                <div className="p-6 text-xs text-slate-500 flex flex-col items-center justify-center gap-2 text-center">
+                  <Sparkles className="w-5 h-5 animate-spin text-indigo-500" />
+                  <span>Consulting National Library of Medicine...</span>
+                </div>
+              )}
+
+              {!isLoading && entries.length > 0 && (
+                <div className="space-y-3">
+                  {entries.map((entry, idx) => (
+                    <EncyclopediaCard key={idx} entry={entry} />
+                  ))}
+                </div>
+              )}
+
+              {!isLoading && isFetched && submittedQuery && entries.length === 0 && (
+                <div className="py-12 text-center space-y-2">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                    No MedlinePlus topics found for "{submittedQuery}".
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Try searching for the official disease name, pathogen, or clinical concept (e.g. "Kawasaki disease", "Aortic stenosis", "Chlamydia").
+                  </p>
+                </div>
+              )}
+
+              {!submittedQuery && !isLoading && (
+                <div className="py-14 text-center space-y-2 px-4">
+                  <div className="w-10 h-10 mx-auto rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                    <Search className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Quick Medical Topic Search
+                  </p>
+                  <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
+                    Type any disease, condition, or clinical term and press <strong>Enter</strong> to fetch official NIH topic overviews, symptoms, causes, and treatments.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface EncyclopediaCardProps {
+  entry: EncyclopediaEntry;
+}
+
+export function EncyclopediaCard({ entry }: EncyclopediaCardProps) {
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden p-4 space-y-3">
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
+            {entry.title}
+          </h4>
+          <a
+            href={entry.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 shrink-0"
+          >
+            Official Topic &rarr;
+          </a>
+        </div>
+        {entry.alt_titles && entry.alt_titles.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {entry.alt_titles.slice(0, 3).map((alt, idx) => (
+              <span
+                key={idx}
+                className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+              >
+                {alt}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2 text-xs">
+        {entry.sections && entry.sections.length > 0 ? (
+          entry.sections.map((sec, idx) => (
+            <details
+              key={idx}
+              open={idx === 0}
+              className="group border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-slate-50/50 dark:bg-slate-800/30"
+            >
+              <summary className="cursor-pointer font-medium p-2.5 bg-slate-100/60 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 select-none hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                {sec.heading}
+              </summary>
+              <div 
+                className="p-3 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 leading-relaxed border-t border-slate-100 dark:border-slate-800 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_li]:mb-1 [&_p]:my-1.5 [&_a]:text-indigo-600 dark:[&_a]:text-indigo-400 [&_a]:underline"
+                dangerouslySetInnerHTML={{ __html: sec.body }}
+              />
+            </details>
+          ))
+        ) : (
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            {entry.summary}
+          </p>
+        )}
+      </div>
+
+      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 text-[10px] text-slate-400">
+        Source: U.S. National Library of Medicine
+      </div>
+    </div>
+  )
+}
+

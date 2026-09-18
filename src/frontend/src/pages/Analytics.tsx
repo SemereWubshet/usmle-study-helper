@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchDashboardStats } from '../api'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
-import { Target, Activity, Zap, ArrowUpDown } from 'lucide-react'
+import { Target, Activity, Zap, ArrowUpDown, BookOpen, GraduationCap, Layers } from 'lucide-react'
 
 // Helper to get local YYYY-MM-DD string
 const getLocalDateStr = (date: Date) => date.toLocaleDateString('en-CA')
@@ -186,32 +186,57 @@ export default function Analytics() {
 
       {/* Scope / Subject-Level Readiness with Exam Scope Selector */}
       <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 py-3.5 px-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center space-x-3">
-              <CardTitle className="text-lg text-slate-900 dark:text-white">
-                Scope Readiness
-              </CardTitle>
-              
-              {/* Exam Scope Selector Dropdown */}
-              <select
-                value={selectedExamScope}
-                onChange={(e) => setSelectedExamScope(e.target.value)}
-                className="text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 py-4 px-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Prominent Exam Scope Selector Tabs */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedExamScope('USMLE Step 1')}
+                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  selectedExamScope === 'USMLE Step 1'
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                }`}
               >
-                <option value="USMLE Step 1">USMLE Step 1</option>
-                <option value="USMLE Step 2 & 3">USMLE Step 2 & 3</option>
-                <option value="MedMCQA">MedMCQA Bank</option>
-              </select>
+                <BookOpen className="w-4 h-4 text-emerald-500" />
+                <span>USMLE Step 1</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedExamScope('USMLE Step 2 & 3')}
+                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  selectedExamScope === 'USMLE Step 2 & 3'
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4 text-emerald-500" />
+                <span>USMLE Step 2 & 3</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedExamScope('MedMCQA')}
+                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  selectedExamScope === 'MedMCQA'
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                }`}
+              >
+                <Layers className="w-4 h-4 text-indigo-500" />
+                <span>MedMCQA Bank</span>
+              </button>
             </div>
 
             {/* Sorting Controls */}
-            <div className="flex items-center space-x-2">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
+            <div className="flex items-center space-x-2 self-end md:self-auto">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                className="text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
               >
                 <option value="weakest">Weakest First</option>
                 <option value="strongest">Strongest First</option>

@@ -14,7 +14,21 @@ export interface Question {
   correct_text?: string | null;
   exam_type?: string | null;
   metamap_phrases?: string[] | null;
+  opa?: string;
+  opb?: string;
+  opc?: string;
+  opd?: string;
 }
+
+export interface AttemptOut {
+  question_id: string;
+  selected_option: number;
+  correct_option: number;
+  is_correct: boolean;
+  explanation?: string | null;
+}
+
+
 
 // In local development with Vite dev proxy, API_BASE_URL defaults to empty string ('')
 // In production (Vercel / custom domain), VITE_API_BASE_URL points to the local HTTPS loopback (e.g. 'https://local.yourdomain.com:8000')
