@@ -13,7 +13,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     <div className={`bg-slate-50 dark:bg-slate-950 transition-colors duration-300 ${isSession ? 'h-screen overflow-hidden flex flex-col' : 'min-h-screen'}`}>
       {/* Floating Top Navigation */}
       <div className="fixed top-0 left-0 right-0 z-50 flex justify-center p-4 pointer-events-none">
-        <nav className="pointer-events-auto flex items-center justify-between w-full max-w-4xl px-6 py-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-full shadow-sm">
+        <nav className="pointer-events-auto flex items-center justify-between w-full max-w-5xl px-6 py-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-full shadow-sm">
           
           <div className="flex items-center space-x-6">
             <Link to="/" className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold tracking-tight">

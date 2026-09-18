@@ -17,6 +17,8 @@ import {
   Award, Sparkles, LayoutDashboard, BarChart3,
   Search, PanelRightClose, PanelRightOpen
 } from 'lucide-react'
+import { ExportPromptButton } from '@/components/ExportPromptButton'
+import type { QuestionExportData } from '@/utils/promptTemplates'
 
 // ============================================================================
 // CONFIGURABLE REVIEW DISPLAY SETTINGS & THRESHOLDS
@@ -57,12 +59,24 @@ export default function Session() {
   
   // State for review mode
   const [isReviewMode, setIsReviewMode] = useState<boolean>(() => {
+    if (location.state?.isReviewMode !== undefined) {
+      if (sessionData?.session_id) {
+        localStorage.setItem(`usmle_session_is_review_${sessionData.session_id}`, String(location.state.isReviewMode))
+      }
+      return location.state.isReviewMode
+    }
     if (!sessionData?.session_id) return false
     return localStorage.getItem(`usmle_session_is_review_${sessionData.session_id}`) === 'true'
   })
 
   // Track all attempts accumulated throughout this session block
   const [attempts, setAttempts] = useState<Record<number, StoredAttempt>>(() => {
+    if (location.state?.attempts) {
+      if (sessionData?.session_id) {
+        localStorage.setItem(`usmle_session_attempts_${sessionData.session_id}`, JSON.stringify(location.state.attempts))
+      }
+      return location.state.attempts
+    }
     if (!sessionData?.session_id) return {}
     const saved = localStorage.getItem(`usmle_session_attempts_${sessionData.session_id}`)
     return saved ? JSON.parse(saved) : {}
@@ -615,38 +629,76 @@ export default function Session() {
               <div className="space-y-6">
                           {/* LEFT COLUMN: Question Details & Educational Rationale (7 cols) */}
           <div>
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
-              <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center space-x-3">
-                    <Badge className="px-2.5 py-1 text-xs bg-slate-900 text-white dark:bg-white dark:text-slate-900">
-                      Question {selectedReviewIndex + 1} of {totalQuestions}
-                    </Badge>
-                    {activeReviewQuestion?.subject && (
-                      <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 text-xs">
-                        {activeReviewQuestion.subject}
-                      </Badge>
-                    )}
-                    {activeReviewAttempt && (
-                      <Badge className={`text-xs ${activeReviewAttempt.isCorrect ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'}`}>
-                        {activeReviewAttempt.isCorrect ? 'Correct Attempt' : 'Missed Question'}
-                      </Badge>
-                    )}
-                  </div>
+            {(() => {
+              // Construct QuestionExportData for AI prompt copying
+              const currentQuestionText = activeReviewQuestion?.question || activeReviewAttempt?.questionText || `Question ID: ${sessionData.question_ids[selectedReviewIndex]}`
+              const rawOptions: string[] = activeReviewQuestion?.options || activeReviewAttempt?.options || []
+              const optionsRecord: Record<string, string> = {}
+              rawOptions.forEach((opt, idx) => {
+                const letter = String.fromCharCode(65 + idx)
+                optionsRecord[letter] = opt
+              })
 
-                  {activeReviewAttempt && (
-                    <div className="flex items-center space-x-1.5 text-xs text-slate-500">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Time spent: <strong className="text-slate-700 dark:text-slate-300">{activeReviewAttempt.timeSpent}s</strong></span>
+              let correctKey = ''
+              if (activeReviewAttempt?.correctOption !== undefined && activeReviewAttempt.correctOption >= 0) {
+                correctKey = `${String.fromCharCode(65 + activeReviewAttempt.correctOption)}) ${rawOptions[activeReviewAttempt.correctOption] || ''}`
+              } else if (activeReviewAttempt?.correctText) {
+                correctKey = activeReviewAttempt.correctText
+              }
+
+              let selectedKey = ''
+              if (activeReviewAttempt?.selectedOption !== undefined && activeReviewAttempt.selectedOption >= 0) {
+                selectedKey = `${String.fromCharCode(65 + activeReviewAttempt.selectedOption)}) ${rawOptions[activeReviewAttempt.selectedOption] || ''}`
+              }
+
+              const exportPromptData: QuestionExportData = {
+                questionText: currentQuestionText,
+                options: optionsRecord,
+                correctOption: correctKey,
+                selectedOption: selectedKey,
+                isCorrect: activeReviewAttempt?.isCorrect,
+                subject: activeReviewQuestion?.subject || activeReviewAttempt?.subject || undefined,
+                rationale: activeReviewQuestion?.explanation || activeReviewAttempt?.explanation || undefined
+              }
+
+              return (
+                <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+                  <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <Badge className="px-2.5 py-1 text-xs bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                          Question {selectedReviewIndex + 1} of {totalQuestions}
+                        </Badge>
+                        {activeReviewQuestion?.subject && (
+                          <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 text-xs">
+                            {activeReviewQuestion.subject}
+                          </Badge>
+                        )}
+                        {activeReviewAttempt && (
+                          <Badge className={`text-xs ${activeReviewAttempt.isCorrect ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'}`}>
+                            {activeReviewAttempt.isCorrect ? 'Correct Attempt' : 'Missed Question'}
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        {activeReviewAttempt && (
+                          <div className="flex items-center space-x-1.5 text-xs text-slate-500">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Time: <strong className="text-slate-700 dark:text-slate-300">{activeReviewAttempt.timeSpent}s</strong></span>
+                          </div>
+                        )}
+
+                        {/* 1-Click Smart Export Prompt Button */}
+                        <ExportPromptButton questionData={exportPromptData} />
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Question Vignette */}
-                <CardTitle className="text-base font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-4">
-                  {activeReviewQuestion?.question || activeReviewAttempt?.questionText || `Question ID: ${sessionData.question_ids[selectedReviewIndex]}`}
-                </CardTitle>
-              </CardHeader>
+                    {/* Question Vignette */}
+                    <CardTitle className="text-base font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-4">
+                      {currentQuestionText}
+                    </CardTitle>
+                  </CardHeader>
 
               {/* Answer Options Breakdown */}
               <CardContent className="space-y-3 pt-4">
@@ -700,6 +752,8 @@ export default function Session() {
                 )}
               </CardContent>
             </Card>
+            )
+          })()}
           </div>
               </div>
             </>
@@ -741,17 +795,50 @@ export default function Session() {
       </header>
 
       {/* Main Question Card */}
-      <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
-        <CardHeader className="space-y-2">
-          {question?.subject && (
-            <Badge className="w-fit bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">
-              {question.subject}
-            </Badge>
-          )}
-          <CardTitle className="text-lg font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-2">
-            {question?.question}
-          </CardTitle>
-        </CardHeader>
+      {(() => {
+        const activeOptionsRecord: Record<string, string> = {}
+        options.forEach((opt: string, idx: number) => {
+          activeOptionsRecord[String.fromCharCode(65 + idx)] = opt
+        })
+
+        let activeCorrectKey = ''
+        if (attemptResult) {
+          activeCorrectKey = `${String.fromCharCode(65 + attemptResult.correct_option)}) ${options[attemptResult.correct_option] || ''}`
+        }
+
+        let activeSelectedKey = ''
+        if (selectedOption !== null && options[selectedOption]) {
+          activeSelectedKey = `${String.fromCharCode(65 + selectedOption)}) ${options[selectedOption]}`
+        }
+
+        const activeQuestionExportData: QuestionExportData = {
+          questionText: question?.question || `Question ${currentIndex + 1}`,
+          options: activeOptionsRecord,
+          correctOption: activeCorrectKey || undefined,
+          selectedOption: activeSelectedKey || undefined,
+          isCorrect: attemptResult?.is_correct,
+          subject: question?.subject || undefined,
+          rationale: question?.explanation || undefined
+        }
+
+        return (
+          <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+            <CardHeader className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                {question?.subject ? (
+                  <Badge className="w-fit bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">
+                    {question.subject}
+                  </Badge>
+                ) : <div />}
+
+                {/* 1-Click Smart Export Prompt Button */}
+                <ExportPromptButton questionData={activeQuestionExportData} />
+              </div>
+
+              <CardTitle className="text-lg font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-2">
+                {question?.question}
+              </CardTitle>
+            </CardHeader>
 
         <CardContent className="space-y-3">
           {options.map((optText: string, idx: number) => {
@@ -805,6 +892,8 @@ export default function Session() {
           )}
         </CardFooter>
       </Card>
+        )
+      })()}
 
       {attemptResult && (
         <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">

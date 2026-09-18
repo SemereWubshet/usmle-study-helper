@@ -115,6 +115,20 @@ export const completeSession = async (sessionId: number) => {
   return res.json();
 };
 
+export const fetchSessionReview = async (sessionId: number) => {
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/sessions/${sessionId}/review`);
+  if (!res.ok) throw new Error('Failed to fetch session review data');
+  return res.json();
+};
+
+export const retrySession = async (sessionId: number) => {
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/sessions/${sessionId}/retry`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to retry session');
+  return res.json();
+};
+
 // --- MedlinePlus / Encyclopedia Models & API ---
 export interface EncyclopediaSection {
   heading: string;
