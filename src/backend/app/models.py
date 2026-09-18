@@ -64,6 +64,7 @@ class SubjectPerformance(BaseModel):
     subject: str
     total_answered: int
     accuracy_percentage: float
+    exam_group: Optional[str] = None
 
 class DashboardOut(BaseModel):
     total_answered: int

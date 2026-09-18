@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, LayoutDashboard, Moon, Sun, BarChart3 } from 'lucide-react'
+import { BookOpen, LayoutDashboard, Moon, Sun, BarChart3, History as HistoryIcon } from 'lucide-react'
 import { useTheme } from './theme-provider'
 import { Button } from '@/components/ui/button'
 
@@ -29,12 +29,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 </Button>
               </Link>
 
+              <Link to="/analytics">
+                <Button variant={location.pathname === '/analytics' ? 'secondary' : 'ghost'} size="sm" className="rounded-full">
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Analytics
+                </Button>
+              </Link>
+
               <Link to="/history">
                 <Button variant={location.pathname === '/history' ? 'secondary' : 'ghost'} size="sm" className="rounded-full">
-                <BarChart3 className="w-4 h-4 mr-2" />
-                History
+                  <HistoryIcon className="w-4 h-4 mr-2" />
+                  History
                 </Button>
-            </Link>
+              </Link>
             </div>
           </div>
 

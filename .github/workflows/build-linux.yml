@@ -61,7 +61,6 @@ jobs:
           # Package into tar.gz and zip
           cd package
           tar -czvf ../USMLEStudyHelper-Linux.tar.gz USMLEStudyHelper
-          zip -r ../USMLEStudyHelper-Linux.zip USMLEStudyHelper
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -75,7 +74,6 @@ jobs:
         with:
           files: |
             USMLEStudyHelper-Linux.tar.gz
-            USMLEStudyHelper-Linux.zip
           draft: false
           prerelease: false
           generate_release_notes: true

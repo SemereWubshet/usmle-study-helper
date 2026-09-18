@@ -105,16 +105,23 @@ def create_session(request: SessionCreate, db: sqlite3.Connection = Depends(get_
     valid_subjects = [s for s in (request.subjects or []) if s != "All Systems"]
     
     # Dynamically build the WHERE clause based on the selected Q-Bank's filters
-    if request.qbank == "medmcqa" and valid_subjects:
+    if request.qbank == "medqa_usmle":
+        if request.exam_type:
+            conditions.append("exam_type = ?")
+            params.append(request.exam_type)
+            scope_str = request.exam_type
+            
+        if valid_subjects:
+            placeholders = ",".join("?" for _ in valid_subjects)
+            conditions.append(f"subject IN ({placeholders})")
+            params.extend(valid_subjects)
+            scope_str = f"{request.exam_type or 'USMLE'} ({', '.join(valid_subjects)})"
+            
+    elif request.qbank == "medmcqa" and valid_subjects:
         placeholders = ",".join("?" for _ in valid_subjects)
         conditions.append(f"subject IN ({placeholders})")
         params.extend(valid_subjects)
         scope_str = ", ".join(valid_subjects)
-        
-    elif request.qbank == "medqa_usmle" and request.exam_type:
-        conditions.append("exam_type = ?")
-        params.append(request.exam_type)
-        scope_str = request.exam_type
         
     # Safely inject the WHERE clause only if conditions exist
     if conditions:
@@ -176,6 +183,21 @@ def create_session(request: SessionCreate, db: sqlite3.Connection = Depends(get_
         question_ids=question_ids, 
         questions=questions
     )
+
+@app.get("/api/subjects")
+@app.get("/api/v1/subjects")
+def get_available_subjects(qbank: str = "medqa_usmle", exam_type: str | None = None, db: sqlite3.Connection = Depends(get_db)):
+    """Returns available subjects and their question counts for a qbank and optional exam_type."""
+    cursor = db.cursor()
+    query = f"SELECT subject, COUNT(*) as count FROM {qbank}.bank_questions WHERE subject IS NOT NULL AND TRIM(subject) != ''"
+    params = []
+    if exam_type:
+        query += " AND exam_type = ?"
+        params.append(exam_type)
+    query += " GROUP BY subject ORDER BY count DESC"
+    
+    rows = cursor.execute(query, params).fetchall()
+    return [{"subject": r["subject"], "count": r["count"]} for r in rows]
 
 @app.get("/api/v1/questions/{question_id}", response_model=QuestionOut)
 def get_question(question_id: str, db: sqlite3.Connection = Depends(get_db)):
@@ -321,22 +343,23 @@ def get_dashboard_stats(db: sqlite3.Connection = Depends(get_db)):
             scope=r["scope"] or "All"
         ))
 
-    # 3. Subject-Level Readiness (Unifying medmcqa subjects and medqa_usmle exam types)
+    # 3. Subject-Level Readiness (Categorized by exam_group: USMLE Step 1, USMLE Step 2 and Step 3, MedMCQA)
     subject_rows = cursor.execute(
         """
         WITH all_questions AS (
-            SELECT id, subject, exam_type FROM medmcqa.bank_questions
+            SELECT id, subject, exam_type, 'MedMCQA' as exam_group FROM medmcqa.bank_questions
             UNION ALL
-            SELECT id, subject, exam_type FROM medqa_usmle.bank_questions
+            SELECT id, subject, exam_type, COALESCE(exam_type, 'USMLE Step 1') as exam_group FROM medqa_usmle.bank_questions
         )
         SELECT 
-            COALESCE(q.subject, q.exam_type) as subject,
+            q.exam_group,
+            q.subject,
             COUNT(a.id) as subject_total,
             SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as subject_correct
         FROM session_attempts a
         JOIN all_questions q ON a.question_id = q.id
-        WHERE COALESCE(q.subject, q.exam_type) IS NOT NULL
-        GROUP BY COALESCE(q.subject, q.exam_type)
+        WHERE q.subject IS NOT NULL AND TRIM(q.subject) != ''
+        GROUP BY q.exam_group, q.subject
         ORDER BY subject_total DESC;
         """
     ).fetchall()
@@ -350,7 +373,8 @@ def get_dashboard_stats(db: sqlite3.Connection = Depends(get_db)):
         subject_performance.append({
             "subject": r["subject"],
             "total_answered": s_total,
-            "accuracy_percentage": round(s_acc, 1)
+            "accuracy_percentage": round(s_acc, 1),
+            "exam_group": r["exam_group"]
         })
 
     return DashboardOut(

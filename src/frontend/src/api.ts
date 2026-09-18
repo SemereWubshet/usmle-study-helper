@@ -56,6 +56,19 @@ export const fetchDashboardStats = async () => {
   return res.json();
 };
 
+export interface SubjectItem {
+  subject: string;
+  count: number;
+}
+
+export const fetchAvailableSubjects = async (qbank: string, examType?: string): Promise<SubjectItem[]> => {
+  const params = new URLSearchParams({ qbank });
+  if (examType) params.append('exam_type', examType);
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/subjects?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch subjects');
+  return res.json();
+};
+
 export const createSession = async (payload: SessionPayload) => {
   const res = await safeFetch(`${API_BASE_URL}/api/v1/sessions/`, {
     method: 'POST',
