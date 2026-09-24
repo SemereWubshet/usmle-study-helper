@@ -148,7 +148,7 @@ export default function Dashboard() {
             className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-500/20 text-xs px-3.5 h-9"
           >
             <Zap className="w-3.5 h-3.5 mr-1.5 fill-current" />
-            Quick Start (Step 1)
+            Quick Start
           </Button>
         </div>
       </div>
