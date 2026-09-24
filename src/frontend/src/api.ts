@@ -31,7 +31,7 @@ export interface AttemptOut {
 
 
 // In local development with Vite dev proxy, API_BASE_URL defaults to empty string ('')
-// In production (Vercel / custom domain), VITE_API_BASE_URL points to the local HTTPS loopback (e.g. 'https://local.yourdomain.com:8000')
+// In production (Vercel / custom domain), VITE_API_BASE_URL points to the local HTTPS loopback (e.g. 'https://usmle-local-engine.semere.dev:8000')
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 export interface EngineHealth {
@@ -42,7 +42,7 @@ export interface EngineHealth {
 
 export const checkEngineHealth = async (customBaseUrl?: string): Promise<EngineHealth> => {
   const base = (customBaseUrl !== undefined ? customBaseUrl : API_BASE_URL).replace(/\/$/, '');
-  const url = `${base}/api/health`;
+  const url = `${base}/api/v1/health`;
   const res = await fetch(url, {
     method: 'GET',
     headers: { 'Accept': 'application/json' },
@@ -84,7 +84,7 @@ export const fetchAvailableSubjects = async (qbank: string, examType?: string): 
 };
 
 export const createSession = async (payload: SessionPayload) => {
-  const res = await safeFetch(`${API_BASE_URL}/api/v1/sessions/`, {
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/sessions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -143,7 +143,9 @@ export const retrySession = async (sessionId: number) => {
   return res.json();
 };
 
-// --- MedlinePlus / Encyclopedia Models & API ---
+// --- MedlinePlus / MedSearch Encyclopedia Models & API ---
+export type MedSearchProvider = 'medlineplus' | 'statpearls' | 'openfda' | 'rxnorm'
+
 export interface EncyclopediaSection {
   heading: string;
   body: string;
@@ -156,11 +158,14 @@ export interface EncyclopediaEntry {
   summary: string;
   alt_titles: string[];
   sections: EncyclopediaSection[];
+  source?: string;
+  source_label?: string;
+  badge?: string | null;
 }
 
-export const fetchEncyclopedia = async (term: string): Promise<EncyclopediaEntry[]> => {
+export const fetchEncyclopedia = async (term: string, source: MedSearchProvider = 'medlineplus'): Promise<EncyclopediaEntry[]> => {
   if (!term || term.trim().length < 2) return [];
-  const res = await safeFetch(`${API_BASE_URL}/api/v1/encyclopedia?term=${encodeURIComponent(term.trim())}`);
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/encyclopedia?term=${encodeURIComponent(term.trim())}&source=${encodeURIComponent(source)}`);
   if (!res.ok) throw new Error(`Encyclopedia lookup failed with status ${res.status}`);
   return res.json();
 };

@@ -84,3 +84,6 @@ class EncyclopediaResponse(BaseModel):
     summary: str
     alt_titles: List[str] = []
     sections: List[EncyclopediaSection] = []
+    source: str = "medlineplus"
+    source_label: str = "NIH MedlinePlus"
+    badge: Optional[str] = None

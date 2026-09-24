@@ -8,7 +8,7 @@ from app.services import sessions as sessions_service
 router = APIRouter(tags=["Sessions"])
 
 
-@router.post("/api/v1/sessions/", response_model=SessionOut)
+@router.post("/api/v1/sessions", response_model=SessionOut)
 def create_session(request: SessionCreate, db: sqlite3.Connection = Depends(get_db)):
     """Creates a new study session with randomized questions according to user filters."""
     session_out = sessions_service.create_session(db=db, request=request)

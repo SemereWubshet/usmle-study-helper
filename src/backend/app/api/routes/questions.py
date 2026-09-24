@@ -8,7 +8,6 @@ from app.services import questions as questions_service
 router = APIRouter(tags=["Questions"])
 
 
-@router.get("/api/subjects")
 @router.get("/api/v1/subjects")
 def get_available_subjects(
     qbank: str = "medqa_usmle",

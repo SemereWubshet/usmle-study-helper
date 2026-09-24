@@ -202,6 +202,8 @@ export default function Session() {
           isLoading={encyclopedia.isLoadingEncyclopedia}
           isFetched={encyclopedia.isFetchedEncyclopedia}
           entries={encyclopedia.encyclopediaEntries}
+          provider={encyclopedia.provider}
+          onProviderChange={encyclopedia.setProvider}
         />
       )}
     </div>
