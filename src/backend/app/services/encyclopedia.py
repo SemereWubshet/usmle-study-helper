@@ -4,8 +4,10 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from functools import lru_cache
+from app.core.config import DEFAULT_HTTP_HEADERS
 
 MEDLINEPLUS_API_URL = "https://wsearch.nlm.nih.gov/ws/query"
+
 
 
 def clean_xml_text(raw_text: str | None) -> str:
@@ -46,7 +48,7 @@ def fetch_medlineplus_topic(term: str) -> list[dict]:
     url = f"{MEDLINEPLUS_API_URL}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "USMLE-Study-Helper/1.0 (Educational App)"},
+        headers=DEFAULT_HTTP_HEADERS,
     )
     try:
         with urllib.request.urlopen(req, timeout=6) as resp:
@@ -69,6 +71,9 @@ def fetch_medlineplus_topic(term: str) -> list[dict]:
             "url": doc.get("url", ""),
             "alt_titles": [],
             "sections": [],
+            "source": "medlineplus",
+            "source_label": "NIH MedlinePlus",
+            "badge": "NIH Overview",
         }
         ht = doc.find(".//health-topic")
         if ht is not None:

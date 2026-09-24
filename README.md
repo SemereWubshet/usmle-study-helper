@@ -1,8 +1,10 @@
-# 🩺 USMLE Study Helper
-
 <p align="center">
-  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/stethoscope.svg" width="64" height="64" alt="Stethoscope" />
+  <a href="https://usmle.semere.dev">
+    <img src="src/frontend/public/usmle.svg" width="72" height="72" alt="USMLE Study Helper Logo" />
+  </a>
 </p>
+
+<h1 align="center">USMLE Study Helper</h1>
 
 <p align="center">
   <strong>A high-yield, privacy-first USMLE study engine.</strong><br>
@@ -25,7 +27,11 @@
 * **Hosted Web UI ([usmle.semere.dev](https://usmle.semere.dev)):** Always up-to-date, modern React interface with dark mode, strike-through options, block timers, and high-yield analytics.
 * **Portable Desktop Engine:** Runs quietly on your local computer via a standalone executable. Your study history, performance metrics, and question attempts **never leave your laptop**.
 * **Zero Telemetry / Zero Cloud Storage:** You own your SQLite database in a simple portable folder. Backing up your entire study history is as easy as copying one folder to a USB drive.
-* **MedSearch (NIH Integration):** Query the official U.S. National Library of Medicine (MedlinePlus) directly inside your question review drawer for concise topic summaries, symptoms, causes, and treatments.
+* **MedSearch (Multi-Source Medical Reference):** Instant, embedded clinical search drawer during review sessions with 4 integrated clinical providers:
+  * **openFDA:** Official FDA drug labeling, black box warnings, clinical pharmacology, indications, and direct DailyMed package insert links.
+  * **StatPearls:** Peer-reviewed clinical review articles covering pathophysiology, presentation, and high-yield USMLE management.
+  * **MedlinePlus:** Consumer-friendly disease summaries, symptoms, causes, and treatments from the National Institutes of Health.
+  * **RxNorm:** Normalized clinical drug concepts, generic formulations, strengths, and branded equivalents from the National Library of Medicine.
 
 ---
 

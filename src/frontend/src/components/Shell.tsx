@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, LayoutDashboard, Moon, Sun, BarChart3, History as HistoryIcon } from 'lucide-react'
+import { LayoutDashboard, Moon, Sun, BarChart3, History as HistoryIcon } from 'lucide-react'
 import { useTheme } from './theme-provider'
 import { Button } from '@/components/ui/button'
 
@@ -16,10 +16,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <nav className="pointer-events-auto flex items-center justify-between w-full max-w-5xl px-6 py-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-full shadow-sm">
           
           <div className="flex items-center space-x-2 sm:space-x-6">
-            <Link to="/" className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold tracking-tight">
-              <BookOpen className="w-5 h-5 shrink-0" />
-              <span className="hidden sm:inline">USMLE Study Helper</span>
-              <span className="sm:hidden font-extrabold text-sm">USMLE</span>
+            <Link to="/" className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold tracking-tight whitespace-nowrap">
+              <img src="/usmle.svg" alt="USMLE Logo" className="w-5 h-5 shrink-0" />
+              <span className="hidden lg:inline">USMLE Study Helper</span>
+              <span className="hidden md:inline lg:hidden">USMLE Study</span>
+              <span className="md:hidden font-extrabold text-sm">USMLE</span>
             </Link>
             
             <div className="flex items-center space-x-1 border-l border-slate-200 dark:border-slate-700 pl-2 sm:pl-6">

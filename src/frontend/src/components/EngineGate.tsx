@@ -85,15 +85,15 @@ export default function EngineGate({ children }: EngineGateProps) {
   }, [health])
 
   useEffect(() => {
-  if (!health) return
-  // Send an immediate heartbeat upon connecting
-  fetch(`${API_BASE_URL}/api/heartbeat`, { method: 'POST' }).catch(() => {})
-  // Send a heartbeat every 10 seconds while this tab is open
-  const interval = setInterval(() => {
-    fetch(`${API_BASE_URL}/api/heartbeat`, { method: 'POST' }).catch(() => {})
-  }, 45000)
-  return () => clearInterval(interval)
-}, [health])
+    if (!health) return
+    // Send an immediate heartbeat upon connecting
+    fetch(`${API_BASE_URL}/api/v1/heartbeat`, { method: 'POST' }).catch(() => {})
+    // Send a heartbeat periodically while this tab is open
+    const interval = setInterval(() => {
+      fetch(`${API_BASE_URL}/api/v1/heartbeat`, { method: 'POST' }).catch(() => {})
+    }, 45000)
+    return () => clearInterval(interval)
+  }, [health])
 
   if (checking && !health) {
     return (

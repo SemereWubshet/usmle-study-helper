@@ -123,6 +123,9 @@ export function useActiveExam({ sessionData, isReviewMode, onEnterReviewMode }: 
     if (isReviewMode) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Allow browser shortcuts like Ctrl+C, Cmd+C, Ctrl+A, etc.
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+
       const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase()
       if (targetTag === 'input' || targetTag === 'textarea') return
 
