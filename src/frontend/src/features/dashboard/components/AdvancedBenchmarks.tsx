@@ -9,6 +9,8 @@ interface AdvancedBenchmarksProps {
   setExcellenceThreshold: (val: number) => void;
   targetSeconds: number;
   setTargetSeconds: (val: number) => void;
+  examDurationMinutes?: number;
+  setExamDurationMinutes?: (val: number) => void;
 }
 
 export function AdvancedBenchmarks({
@@ -20,6 +22,8 @@ export function AdvancedBenchmarks({
   setExcellenceThreshold,
   targetSeconds,
   setTargetSeconds,
+  examDurationMinutes = 60,
+  setExamDurationMinutes,
 }: AdvancedBenchmarksProps) {
   return (
     <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -33,7 +37,7 @@ export function AdvancedBenchmarks({
       </button>
 
       {showAdvanced && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 animate-in fade-in duration-300">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4 animate-in fade-in duration-300">
           {/* Passing Threshold */}
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
             <div className="flex justify-between items-center text-xs">
@@ -86,6 +90,24 @@ export function AdvancedBenchmarks({
               className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
             />
             <p className="text-[10px] text-slate-400">{Math.floor(targetSeconds / 60)}m {targetSeconds % 60}s / Q</p>
+          </div>
+
+          {/* Mock Exam Duration */}
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-500 font-medium">Exam Time</span>
+              <span className="font-bold text-indigo-600 dark:text-amber-400">{examDurationMinutes}m</span>
+            </div>
+            <input
+              type="range"
+              min={5}
+              max={120}
+              step={5}
+              value={examDurationMinutes}
+              onChange={(e) => setExamDurationMinutes && setExamDurationMinutes(Number(e.target.value))}
+              className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+            />
+            <p className="text-[10px] text-slate-400">Block countdown length</p>
           </div>
         </div>
       )}

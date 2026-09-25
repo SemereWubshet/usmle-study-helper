@@ -20,5 +20,7 @@ export interface SessionCustomConfig {
   passingThreshold: number;
   excellenceThreshold: number;
   targetSeconds: number;
+  examMode?: 'tutor' | 'mock_exam';
+  timeLimitSeconds?: number;
 }
 

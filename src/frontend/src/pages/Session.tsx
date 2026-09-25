@@ -66,6 +66,10 @@ export default function Session() {
   const {
     currentIndex,
     timeSpent,
+    examMode,
+    timeRemaining,
+    isPaused,
+    togglePause,
     selectedOption,
     struckOptions,
     attemptResult,
@@ -105,6 +109,7 @@ export default function Session() {
       localStorage.removeItem(`usmle_session_attempts_${sessionData.session_id}`)
       localStorage.removeItem(`usmle_session_is_review_${sessionData.session_id}`)
       localStorage.removeItem(`usmle_session_notes_${sessionData.session_id}`)
+      localStorage.removeItem(`usmle_session_timer_${sessionData.session_id}`)
     }
     navigate('/')
   }
@@ -121,10 +126,13 @@ export default function Session() {
   const activeReviewQuestion = sessionData?.questions?.[review.selectedReviewIndex]
   const activeReviewAttempt = effectiveAttempts[review.selectedReviewIndex]
 
+  // During mock exam active testing, sidebar is locked closed to preserve exam conditions
+  const showSidebar = (isReviewMode || examMode !== 'mock_exam') && encyclopedia.isSidebarOpen
+
   return (
     <div className="h-full w-full overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row gap-6">
       {/* Main scrolling stage */}
-      <div className={`w-full ${encyclopedia.isSidebarOpen ? 'lg:w-[65%] xl:w-[68%]' : 'max-w-5xl mx-auto'} lg:h-full lg:overflow-y-auto pr-0 ${encyclopedia.isSidebarOpen ? 'lg:pr-2' : ''} transition-all duration-300`}>
+      <div className={`w-full ${showSidebar ? 'lg:w-[65%] xl:w-[68%]' : 'max-w-5xl mx-auto'} lg:h-full lg:overflow-y-auto pr-0 ${showSidebar ? 'lg:pr-2' : ''} transition-all duration-300`}>
         <div className="w-full py-2 flex flex-col space-y-6 animate-in fade-in duration-500">
           <SessionHeader
             isReviewMode={isReviewMode}
@@ -133,6 +141,10 @@ export default function Session() {
             currentIndex={currentIndex}
             totalQuestions={totalQuestions}
             timeSpent={timeSpent}
+            examMode={examMode}
+            timeRemaining={timeRemaining}
+            isPaused={isPaused}
+            onTogglePause={togglePause}
             isSidebarOpen={encyclopedia.isSidebarOpen}
             onToggleSidebar={() => encyclopedia.setIsSidebarOpen(prev => !prev)}
             onFinishReview={handleFinishReview}
@@ -181,6 +193,7 @@ export default function Session() {
               attemptResult={attemptResult}
               isSubmitting={isSubmitting}
               isLastQuestion={currentIndex + 1 >= totalQuestions}
+              examMode={examMode}
               onSelectOption={handleSelectOption}
               onToggleStrike={handleToggleStrike}
               onSubmit={handleSubmit}
@@ -191,7 +204,7 @@ export default function Session() {
       </div>
 
       {/* Persistent Right Sidebar (MedSearch Encyclopedia) */}
-      {encyclopedia.isSidebarOpen && (
+      {showSidebar && (
         <EncyclopediaSidebar
           searchInput={encyclopedia.searchInput}
           onSearchInputChange={encyclopedia.setSearchInput}

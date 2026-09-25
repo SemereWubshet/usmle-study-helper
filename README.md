@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://usmle.semere.dev">
-    <img src="src/frontend/public/usmle.svg" width="72" height="72" alt="USMLE Study Helper Logo" />
+    <img src="src/frontend/usmle.svg" width="72" height="72" alt="USMLE Study Helper Logo" />
   </a>
 </p>
 

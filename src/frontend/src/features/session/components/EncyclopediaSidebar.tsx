@@ -62,7 +62,7 @@ export function EncyclopediaSidebar({
                     variant="ghost"
                     onClick={onCloseSidebar}
                     className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                    title="Collapse sidebar"
+                    title="Hide MedSearch"
                   >
                     <PanelRightClose className="w-4 h-4" />
                   </Button>

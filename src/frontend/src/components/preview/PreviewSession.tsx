@@ -63,7 +63,7 @@ export function PreviewSession({
               ) : (
                 <PanelRightOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
               )}
-              <span>{isSidebarOpen ? "Hide Search" : "MedSearch"}</span>
+              <span>{isSidebarOpen ? "MedSearch" : "MedSearch"}</span>
             </Button>
           </div>
         </div>
@@ -128,7 +128,7 @@ export function PreviewSession({
                   variant="ghost"
                   onClick={toggleSidebar}
                   className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                  title="Collapse sidebar"
+                  title="Hide MedSearch"
                 >
                   <PanelRightClose className="w-3.5 h-3.5" />
                 </Button>

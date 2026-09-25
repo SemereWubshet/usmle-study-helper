@@ -10,7 +10,7 @@ import {
 } from '../api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Zap, ArrowRight, BarChart3 } from 'lucide-react'
+import { Zap, ArrowRight, BarChart3, BookOpen, GraduationCap } from 'lucide-react'
 
 import { QbankSelector } from '@/features/dashboard/components/QbankSelector'
 import { SubjectSelector } from '@/features/dashboard/components/SubjectSelector'
@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [passingThreshold, setPassingThreshold] = useState(60)
   const [excellenceThreshold, setExcellenceThreshold] = useState(80)
   const [targetSeconds, setTargetSeconds] = useState(90)
+  const [examDurationMinutes, setExamDurationMinutes] = useState(60)
 
   // Lightweight summary stats for header
   const { data: stats } = useQuery({
@@ -49,7 +50,7 @@ export default function Dashboard() {
   })
 
   const sessionMutation = useMutation({
-    mutationFn: async (payload: SessionPayload & { customConfig?: { passingThreshold: number; excellenceThreshold: number; targetSeconds: number } }) => {
+    mutationFn: async (payload: SessionPayload & { customConfig?: { passingThreshold: number; excellenceThreshold: number; targetSeconds: number; examMode?: 'tutor' | 'mock_exam'; timeLimitSeconds?: number } }) => {
       const { customConfig, ...backendPayload } = payload
       const data = await createSession(backendPayload)
       return {
@@ -58,6 +59,7 @@ export default function Dashboard() {
           passingThreshold: 60,
           excellenceThreshold: 80,
           targetSeconds: 90,
+          examMode: 'tutor',
         },
       }
     },
@@ -113,6 +115,29 @@ export default function Dashboard() {
         passingThreshold,
         excellenceThreshold,
         targetSeconds,
+        examMode: 'tutor',
+      }
+    })
+  }
+
+  const handleStartMockExam = () => {
+    // Standard mock exam is 40 questions (or capped by available if filtered)
+    const effectiveBlockSize = Math.min(blockCount[0], totalAvailableInSelection || blockCount[0])
+    const payload: SessionPayload = {
+      qbank: selectedQbank,
+      block_size: effectiveBlockSize,
+      ...(selectedQbank === "medqa_usmle" ? { exam_type: examTarget } : {}),
+      ...(!selectedSubjects.includes('All Subjects') ? { subjects: selectedSubjects } : {})
+    }
+
+    sessionMutation.mutate({
+      ...payload,
+      customConfig: {
+        passingThreshold,
+        excellenceThreshold,
+        targetSeconds,
+        examMode: 'mock_exam',
+        timeLimitSeconds: examDurationMinutes * 60,
       }
     })
   }
@@ -202,21 +227,41 @@ export default function Dashboard() {
             setExcellenceThreshold={setExcellenceThreshold}
             targetSeconds={targetSeconds}
             setTargetSeconds={setTargetSeconds}
+            examDurationMinutes={examDurationMinutes}
+            setExamDurationMinutes={setExamDurationMinutes}
           />
 
-          {/* Launch Button */}
-          <div className="pt-2">
+          {/* Action Launch Buttons */}
+          <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Button
               onClick={handleStartSession}
               disabled={sessionMutation.isPending || totalAvailableInSelection === 0}
-              className="w-full h-14 text-base font-semibold rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full h-14 text-base font-semibold rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
             >
               {sessionMutation.isPending ? (
                 'Generating Session...'
               ) : (
-                <span className="flex items-center justify-center">
-                  Start {blockCount[0]}-Question Session
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                
+                <span className="flex items-center justify-center text-sm sm:text-base">
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  Start Practice ({blockCount[0]} Qs)
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </span>
+              )}
+            </Button>
+
+            <Button
+              onClick={handleStartMockExam}
+              disabled={sessionMutation.isPending || totalAvailableInSelection === 0}
+              className="w-full h-14 text-base font-semibold rounded-2xl bg-indigo-700 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+            >
+              {sessionMutation.isPending ? (
+                'Preparing Exam...'
+              ) : (
+                <span className="flex items-center justify-center text-sm sm:text-base">
+                  <GraduationCap className="w-4 h-4 mr-2" />
+                  Start Exam ({blockCount[0]} Qs • {examDurationMinutes}m)
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
                 </span>
               )}
             </Button>

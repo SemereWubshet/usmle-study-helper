@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchQuestion, submitSessionAttempt, completeSession, type Question, type AttemptOut } from '@/api'
 import type { StoredAttempt } from '../types'
@@ -28,6 +28,21 @@ export function useActiveExam({ sessionData, isReviewMode, onEnterReviewMode }: 
     return saved ? JSON.parse(saved) : {}
   })
 
+  const examMode = sessionData?.customConfig?.examMode || 'tutor'
+  const timeLimitSeconds = sessionData?.customConfig?.timeLimitSeconds || 3600
+
+  // Block Countdown Timer for Mock Exam
+  const [timeRemaining, setTimeRemaining] = useState<number>(() => {
+    if (examMode !== 'mock_exam') return timeLimitSeconds
+    if (!sessionData?.session_id) return timeLimitSeconds
+    const saved = localStorage.getItem(`usmle_session_timer_${sessionData.session_id}`)
+    return saved !== null ? Math.max(0, parseInt(saved, 10)) : timeLimitSeconds
+  })
+  const [isPaused, setIsPaused] = useState(false)
+
+  const onEnterReviewRef = useRef(onEnterReviewMode)
+  onEnterReviewRef.current = onEnterReviewMode
+
   // Save progress
   useEffect(() => {
     if (sessionData?.session_id && !isReviewMode) {
@@ -35,12 +50,40 @@ export function useActiveExam({ sessionData, isReviewMode, onEnterReviewMode }: 
     }
   }, [sessionData?.session_id, currentIndex, isReviewMode])
 
-  // Timer
+  // Per-question timer (tutor mode or background stopwatch)
   useEffect(() => {
-    if (isReviewMode || attemptResult) return
+    if (isReviewMode || attemptResult || isPaused) return
     const timer = setInterval(() => setTimeSpent(prev => prev + 1), 1000)
     return () => clearInterval(timer)
-  }, [attemptResult, currentIndex, isReviewMode])
+  }, [attemptResult, currentIndex, isReviewMode, isPaused])
+
+  // Countdown timer for mock exam
+  useEffect(() => {
+    if (examMode !== 'mock_exam' || isReviewMode || isPaused) return
+
+    const sessionId = sessionData?.session_id
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        const nextTime = Math.max(0, prev - 1)
+        if (sessionId) {
+          localStorage.setItem(`usmle_session_timer_${sessionId}`, nextTime.toString())
+        }
+        if (nextTime <= 0) {
+          clearInterval(timer)
+          if (sessionId) {
+            completeSession(sessionId).catch(() => {})
+            localStorage.setItem(`usmle_session_is_review_${sessionId}`, 'true')
+          }
+          onEnterReviewRef.current?.()
+          queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
+          return 0
+        }
+        return nextTime
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [examMode, isReviewMode, isPaused, sessionData?.session_id, queryClient])
 
   const currentQuestionId = sessionData?.question_ids?.[currentIndex]
 
@@ -54,6 +97,15 @@ export function useActiveExam({ sessionData, isReviewMode, onEnterReviewMode }: 
 
   const rawOptions = question?.options || (question ? [question.opa, question.opb, question.opc, question.opd] : [])
   const options = rawOptions.filter((opt: unknown): opt is string => typeof opt === 'string' && opt.length > 0)
+
+  const finishSession = () => {
+    if (sessionData?.session_id) {
+      completeSession(sessionData.session_id).catch(() => {})
+      localStorage.setItem(`usmle_session_is_review_${sessionData.session_id}`, 'true')
+    }
+    onEnterReviewMode()
+    queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
+  }
 
   // Submit Mutation
   const attemptMutation = useMutation({
@@ -83,32 +135,42 @@ export function useActiveExam({ sessionData, isReviewMode, onEnterReviewMode }: 
         }
         return updated
       })
+
+      // In mock_exam mode, immediately advance to next question without revealing the answer
+      if (examMode === 'mock_exam') {
+        if (currentIndex + 1 >= (sessionData?.question_ids?.length || 0)) {
+          finishSession()
+        } else {
+          setSelectedOption(null)
+          setStruckOptions([])
+          setAttemptResult(null)
+          setTimeSpent(0)
+          setCurrentIndex(prev => prev + 1)
+        }
+      }
     },
   })
 
   const handleSelectOption = (index: number) => {
-    if (!attemptResult) setSelectedOption(index)
+    if (examMode === 'mock_exam' || !attemptResult) setSelectedOption(index)
   }
 
   const handleToggleStrike = (e: React.MouseEvent, index: number) => {
     e.preventDefault()
-    if (!attemptResult) {
+    if (examMode === 'mock_exam' || !attemptResult) {
       setStruckOptions(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index])
     }
   }
 
   const handleSubmit = () => {
-    if (selectedOption !== null) attemptMutation.mutate(selectedOption)
+    if (selectedOption !== null && !attemptMutation.isPending) {
+      attemptMutation.mutate(selectedOption)
+    }
   }
 
   const handleNext = () => {
     if (currentIndex + 1 >= (sessionData?.question_ids?.length || 0)) {
-      if (sessionData?.session_id) {
-        completeSession(sessionData.session_id).catch(() => {})
-        localStorage.setItem(`usmle_session_is_review_${sessionData.session_id}`, 'true')
-      }
-      onEnterReviewMode()
-      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
+      finishSession()
     } else {
       setSelectedOption(null)
       setStruckOptions([])
@@ -166,9 +228,17 @@ export function useActiveExam({ sessionData, isReviewMode, onEnterReviewMode }: 
     ? (question?.exam_type || 'USMLE Practice')
     : (question?.subject ? `MedMCQA • ${question.subject}` : 'MedMCQA • Custom Block')
 
+  const togglePause = () => {
+    setIsPaused(prev => !prev)
+  }
+
   return {
     currentIndex,
     timeSpent,
+    examMode,
+    timeRemaining,
+    isPaused,
+    togglePause,
     selectedOption,
     struckOptions,
     attemptResult,
