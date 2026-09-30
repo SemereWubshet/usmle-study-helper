@@ -17,6 +17,14 @@ DEFAULT_HTTP_HEADERS = {
     "Accept": "application/json, text/xml, */*",
 }
 
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+PRIMARY_CLUE_MODEL = "inclusionai/ling-3.0-flash-sante:free"
+FALLBACK_CLUE_MODELS = [
+    "mistralai/mistral-small-24b-instruct-2501:free",
+    "openrouter/auto:free",
+]
+
 
 
 def update_heartbeat():
