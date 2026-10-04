@@ -1,5 +1,13 @@
-# Expose all models for backwards-compatibility and modular grouping
-from app.models.clinical_graph import ExtractCluesRequest, ClueExtractionResponse
+from app.models.clinical_graph import (
+    ExtractCluesRequest,
+    ClueExtractionResponse,
+    GraphNode,
+    GraphEdge,
+    PathStep,
+    CluePath,
+    BuildGraphRequest,
+    ClinicalGraphResponse,
+)
 from app.models_legacy import (
     QuestionOut,
     AttemptIn,
@@ -16,6 +24,12 @@ from app.models_legacy import (
 __all__ = [
     "ExtractCluesRequest",
     "ClueExtractionResponse",
+    "GraphNode",
+    "GraphEdge",
+    "PathStep",
+    "CluePath",
+    "BuildGraphRequest",
+    "ClinicalGraphResponse",
     "QuestionOut",
     "AttemptIn",
     "AttemptOut",

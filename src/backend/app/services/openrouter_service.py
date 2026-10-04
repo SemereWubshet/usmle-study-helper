@@ -48,7 +48,9 @@ async def call_openrouter_chat(
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": temperature,
-                # "max_tokens": 400,
+                "reasoning": {
+                    "effort": "none"
+                },
             }
 
             try:

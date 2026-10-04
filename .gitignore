@@ -68,3 +68,14 @@ htmlcov/
 !.vscode/extensions.json
 *.code-workspace
 
+
+# API Key and local credentials
+api_key.txt
+api_key.env
+*.env
+*.env.*
+!*.env.example
+
+# Knowledge graph binaries
+*.pkl
+src/backend/graphdata/

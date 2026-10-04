@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Moon, Sun, BarChart3, History as HistoryIcon } from 'lucide-react'
 import { useTheme } from './theme-provider'
 import { Button } from '@/components/ui/button'
+import { EngineUpdateBanner } from '@/components/EngineUpdateBanner'
 
 export default function Shell({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme()
@@ -61,6 +62,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
       </div>
+
+      {/* Floating Engine Update Notification (Only appears if engine has newer release) */}
+      <EngineUpdateBanner />
 
       {/* Main Content Area */}
       {isSession ? (

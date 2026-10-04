@@ -1,6 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Search, Sparkles, PanelRightClose, X } from 'lucide-react'
+import { Search, Sparkles, X } from 'lucide-react'
 import type { EncyclopediaEntry, MedSearchProvider } from '@/api'
 import { ProviderTabs } from './medsearch/ProviderTabs'
 import { EncyclopediaCard } from './medsearch/EncyclopediaCard'
@@ -9,7 +9,7 @@ import { getProviderConfig } from './medsearch/types'
 interface EncyclopediaSidebarProps {
   searchInput: string;
   onSearchInputChange: (val: string) => void;
-  submittedQuery: string;
+  submittedQuery?: string;
   onSearchSubmit: (e: React.FormEvent) => void;
   onClearSearch: () => void;
   onCloseSidebar: () => void;
@@ -23,7 +23,6 @@ interface EncyclopediaSidebarProps {
 export function EncyclopediaSidebar({
   searchInput,
   onSearchInputChange,
-  submittedQuery,
   onSearchSubmit,
   onClearSearch,
   onCloseSidebar,
@@ -36,7 +35,7 @@ export function EncyclopediaSidebar({
   const currentConfig = getProviderConfig(provider)
 
   return (
-    <div className="w-full lg:w-[35%] xl:w-[32%] border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 lg:h-full lg:overflow-y-auto flex-shrink-0 bg-white dark:bg-slate-900 rounded-2xl lg:rounded-none pb-10 lg:pb-0 animate-in fade-in duration-300">
+    <div className="w-full h-full overflow-y-auto flex-shrink-0 bg-white dark:bg-slate-900 rounded-2xl lg:rounded-none pb-12 lg:pb-6 animate-in fade-in duration-300">
       <div className="p-4 space-y-4">
         <div>
           <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
@@ -62,89 +61,75 @@ export function EncyclopediaSidebar({
                     variant="ghost"
                     onClick={onCloseSidebar}
                     className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                    title="Hide MedSearch"
+                    title="Close MedSearch"
                   >
-                    <PanelRightClose className="w-4 h-4" />
+                    <X className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
 
-              {/* Modular Provider Selector */}
-              <ProviderTabs
-                selectedProvider={provider}
-                onSelectProvider={onProviderChange}
-                disabled={isLoading}
-              />
+              {/* Provider Selection Tabs */}
+              <ProviderTabs selectedProvider={provider} onSelectProvider={onProviderChange} />
 
-              {/* Interactive Search Bar */}
-              <form onSubmit={onSearchSubmit} className="relative flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchInput}
-                    onChange={(e) => onSearchInputChange(e.target.value)}
-                    placeholder={currentConfig.placeholder}
-                    className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                  />
-                  {searchInput && (
-                    <button
-                      type="button"
-                      onClick={onClearSearch}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
+              <form onSubmit={onSearchSubmit} className="relative flex items-center">
+                <Search className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder={`Search ${currentConfig.sourceLabel}...`}
+                  value={searchInput}
+                  onChange={(e) => onSearchInputChange(e.target.value)}
+                  className="w-full pl-9 pr-20 py-2 text-sm bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={onClearSearch}
+                    className="absolute right-12 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!searchInput.trim() || isLoading}
-                  className="text-xs h-8 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium cursor-pointer"
+                  disabled={isLoading || !searchInput.trim()}
+                  className="absolute right-1.5 h-7 px-2.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg cursor-pointer"
                 >
                   Search
                 </Button>
               </form>
             </CardHeader>
 
-            <CardContent className="p-4 space-y-3.5 max-h-[calc(100vh-250px)] overflow-y-auto">
-              {isLoading && (
-                <div className="p-6 text-xs text-slate-500 flex flex-col items-center justify-center gap-2 text-center">
-                  <Sparkles className="w-5 h-5 animate-spin text-indigo-500" />
-                  <span>Consulting {currentConfig.sourceLabel}...</span>
+            <CardContent className="pt-4">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                  <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Searching {currentConfig.sourceLabel}...
+                  </p>
                 </div>
-              )}
-
-              {!isLoading && entries.length > 0 && (
+              ) : isFetched && entries.length === 0 ? (
+                <div className="text-center py-10 space-y-2">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    No clinical articles found
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Try searching a general medical condition or drug generic name.
+                  </p>
+                </div>
+              ) : entries.length > 0 ? (
                 <div className="space-y-3">
-                  {entries.map((entry, idx) => (
-                    <EncyclopediaCard key={idx} entry={entry} />
+                  {entries.map((entry, index) => (
+                    <EncyclopediaCard key={`${entry.source}-${index}`} entry={entry} />
                   ))}
                 </div>
-              )}
-
-              {!isLoading && isFetched && submittedQuery && entries.length === 0 && (
-                <div className="py-12 text-center space-y-2">
-                  <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                    No results found for &quot;{submittedQuery}&quot; in {currentConfig.name}.
-                  </p>
-                  <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                    Try switching provider or searching for a different clinical term or drug name.
-                  </p>
-                </div>
-              )}
-
-              {!submittedQuery && !isLoading && (
-                <div className="py-14 text-center space-y-2 px-4">
-                  <div className="w-10 h-10 mx-auto rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-                    <span className="text-lg">{currentConfig.icon}</span>
+              ) : (
+                <div className="text-center py-10 space-y-2">
+                  <div className="inline-flex p-2.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mb-1">
+                    <Sparkles className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {currentConfig.name} Search
-                  </p>
-                  <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
-                    {currentConfig.emptyHint}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[240px] mx-auto">
+                    Type a clinical concept, sign, drug, or syndrome above to look up instant medical references.
                   </p>
                 </div>
               )}
@@ -155,4 +140,3 @@ export function EncyclopediaSidebar({
     </div>
   )
 }
-export { EncyclopediaCard }
