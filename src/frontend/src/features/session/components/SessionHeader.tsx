@@ -1,6 +1,8 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { PanelRightClose, PanelRightOpen, LayoutDashboard, Clock, Pause, Play, AlertCircle } from 'lucide-react'
+import { Search, GitGraph, LayoutDashboard, Clock, Pause, Play, AlertCircle } from 'lucide-react'
+
+export type ActiveSidePanel = 'none' | 'medsearch' | 'graph';
 
 interface SessionHeaderProps {
   isReviewMode: boolean;
@@ -13,8 +15,8 @@ interface SessionHeaderProps {
   timeRemaining?: number;
   isPaused?: boolean;
   onTogglePause?: () => void;
-  isSidebarOpen: boolean;
-  onToggleSidebar: () => void;
+  activePanel: ActiveSidePanel;
+  onTogglePanel: (panel: ActiveSidePanel) => void;
   onFinishReview: () => void;
   onQuitSession?: () => void;
 }
@@ -30,11 +32,14 @@ export function SessionHeader({
   timeRemaining = 3600,
   isPaused = false,
   onTogglePause,
-  isSidebarOpen,
-  onToggleSidebar,
+  activePanel,
+  onTogglePanel,
   onFinishReview,
   onQuitSession,
 }: SessionHeaderProps) {
+  const isMedSearchOpen = activePanel === 'medsearch';
+  const isGraphOpen = activePanel === 'graph';
+
   if (isReviewMode) {
     return (
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
@@ -55,17 +60,37 @@ export function SessionHeader({
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <Button
-            size="sm"
-            variant={isSidebarOpen ? "secondary" : "outline"}
-            onClick={onToggleSidebar}
-            className="h-11 px-4 text-xs font-medium rounded-xl gap-2 cursor-pointer border-slate-200 dark:border-slate-800"
-            title={isSidebarOpen ? "Collapse Review Cards" : "Show Review Cards"}
-          >
-            {isSidebarOpen ? <PanelRightClose className="w-4 h-4 text-slate-500" /> : <PanelRightOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
-            <span>{isSidebarOpen ? "Hide Cards" : "Show Cards"}</span>
-          </Button>
+        <div className="flex items-center space-x-2">
+          {/* Mutually Exclusive Panel Toggles */}
+          <div className="flex items-center space-x-1 bg-transparent p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => onTogglePanel(isMedSearchOpen ? 'none' : 'medsearch')}
+              className={`h-9 px-3 text-xs font-medium rounded-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.97] active:translate-y-px ${
+                isMedSearchOpen
+                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 shadow-2xs'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300'
+              }`}
+              title="Toggle MedSearch"
+            >
+              <Search className={`w-3.5 h-3.5 ${isMedSearchOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} />
+              <span>MedSearch</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onTogglePanel(isGraphOpen ? 'none' : 'graph')}
+              className={`h-9 px-3 text-xs font-medium rounded-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.97] active:translate-y-px ${
+                isGraphOpen
+                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 shadow-2xs'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300'
+              }`}
+              title="Toggle MedGraph"
+            >
+              <GitGraph className={`w-3.5 h-3.5 ${isGraphOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} />
+              <span>MedGraph</span>
+            </button>
+          </div>
 
           <Button 
             onClick={onFinishReview}
@@ -85,8 +110,8 @@ export function SessionHeader({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const isLowTime = timeRemaining <= 300 // < 5 minutes
-  const isCriticalTime = timeRemaining <= 60 // < 1 minute
+  const isLowTime = timeRemaining <= 300
+  const isCriticalTime = timeRemaining <= 60
 
   return (
     <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -113,10 +138,14 @@ export function SessionHeader({
                   ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/80 dark:text-rose-200 animate-pulse'
                   : isLowTime
                   ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-200'
-                  : 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 border-indigo-200 dark:border-indigo-800'
+                  : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:border-slate-700'
               }`}>
-                {isCriticalTime ? <AlertCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                <span>{formatCountdown(timeRemaining)}</span>
+                {isCriticalTime ? (
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 animate-bounce" />
+                ) : (
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                )}
+                <span className="font-mono tracking-tight">{formatCountdown(timeRemaining)}</span>
               </div>
 
               {onTogglePause && (
@@ -124,10 +153,10 @@ export function SessionHeader({
                   size="sm"
                   variant="outline"
                   onClick={onTogglePause}
-                  className="h-7 px-2 text-[11px] rounded-lg border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-                  title={isPaused ? "Resume Exam Timer" : "Pause Exam Timer"}
+                  className="h-8 px-2.5 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer"
+                  title={isPaused ? "Resume Exam" : "Pause Exam"}
                 >
-                  {isPaused ? <Play className="w-3 h-3 fill-current mr-1 text-emerald-500" /> : <Pause className="w-3 h-3 mr-1 text-indigo-500" />}
+                  {isPaused ? <Play className="w-3.5 h-3.5 text-emerald-500 fill-emerald-500" /> : <Pause className="w-3.5 h-3.5 text-slate-500" />}
                   <span>{isPaused ? "Resume" : "Pause"}</span>
                 </Button>
               )}
@@ -143,16 +172,35 @@ export function SessionHeader({
 
       <div className="flex items-center space-x-2">
         {examMode !== 'mock_exam' && (
-          <Button
-            size="sm"
-            variant={isSidebarOpen ? "secondary" : "outline"}
-            onClick={onToggleSidebar}
-            className="h-9 px-3 text-xs font-medium rounded-xl gap-1.5 cursor-pointer border-slate-200 dark:border-slate-800"
-            title={isSidebarOpen ? "Hide MedSearch" : "Open MedSearch"}
-          >
-            {isSidebarOpen ? <PanelRightClose className="w-3.5 h-3.5 text-slate-500" /> : <PanelRightOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
-            <span>{isSidebarOpen ? "MedSearch" : "MedSearch"}</span>
-          </Button>
+          <div className="flex items-center space-x-1 bg-transparent p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => onTogglePanel(isMedSearchOpen ? 'none' : 'medsearch')}
+              className={`h-8 px-2.5 text-xs font-medium rounded-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.97] active:translate-y-px ${
+                isMedSearchOpen
+                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 shadow-2xs'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300'
+              }`}
+              title="Toggle MedSearch"
+            >
+              <Search className={`w-3.5 h-3.5 ${isMedSearchOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} />
+              <span>MedSearch</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onTogglePanel(isGraphOpen ? 'none' : 'graph')}
+              className={`h-8 px-2.5 text-xs font-medium rounded-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.97] active:translate-y-px ${
+                isGraphOpen
+                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 shadow-2xs'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300'
+              }`}
+              title="Toggle MedGraph"
+            >
+              <GitGraph className={`w-3.5 h-3.5 ${isGraphOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} />
+              <span>MedGraph</span>
+            </button>
+          </div>
         )}
 
         {onQuitSession && (
@@ -160,7 +208,7 @@ export function SessionHeader({
             size="sm"
             variant="ghost"
             onClick={onQuitSession}
-            className="h-9 rounded-xl cursor-pointer text-xs
+            className="h-8 rounded-xl cursor-pointer text-xs
                       text-rose-500
                       hover:bg-rose-50 hover:text-rose-600
                       active:bg-rose-100
@@ -173,4 +221,3 @@ export function SessionHeader({
     </div>
   )
 }
-

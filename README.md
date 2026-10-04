@@ -32,6 +32,21 @@
   * **StatPearls:** Peer-reviewed clinical review articles covering pathophysiology, presentation, and high-yield USMLE management.
   * **MedlinePlus:** Consumer-friendly disease summaries, symptoms, causes, and treatments from the National Institutes of Health.
   * **RxNorm:** Normalized clinical drug concepts, generic formulations, strengths, and branded equivalents from the National Library of Medicine.
+* **MedGraph (Clinical Knowledge Constellation):** An interactive, dynamic pathophysiology visualizer that traces reasoning pathways from patient vignette clues to candidate diagnoses:
+  * **DR.KNOWS Biomedical Ontology:** Grounded in a high-yield pruned knowledge graph linking UMLS / SNOMED CT clinical concepts with precise medical relations (`causes`, `manifestation of`, `associated with`, `treats`).
+  * **Bidirectional Pathfinding:** Fast bidirectional Dijkstra algorithms that discover multi-hop causal chains connecting patient findings to target conditions.
+  * **Interactive Context Halos:** Surrounding differential nodes that students can click to add as additional findings or explore connected pathologies.
+* **Engine Version Intelligence:** An unobtrusive, non-blocking notification in the web app that notifies students when a newer local engine release is available on GitHub.
+
+---
+
+## 🔒 100% Local AI & API Key Privacy
+
+For students using AI features (such as clinical clue extraction via OpenRouter) or pathophysiological knowledge graph convergence:
+
+* **Your API Key Never Leaves Your Computer:** We do not operate intermediate proxy servers or telemetry databases. Requests to OpenRouter are dispatched directly from your local desktop engine (`127.0.0.1`) to the AI provider.
+* **Zero-Touch Local File Configuration:** You do not need to enter your API key into a website form if you prefer not to. You can simply create a file named `api_key.txt` inside your `USMLEStudyHelper` folder containing your key (or set `OPENROUTER_API_KEY=sk-or-...`). The desktop engine automatically loads it on launch.
+* **Source & Repo Safety:** `api_key.txt` and `.env` files are permanently git-ignored by default to prevent accidental commits or credential leaks.
 
 ---
 
@@ -57,6 +72,8 @@
 |  ├── USMLE-Helper.exe       # Standalone FastAPI Engine     |
 |  ├── certs/                 # Loopback SSL certificates     |
 |  ├── datasets/              # USMLE Step 1 & Step 2 Banks   |
+|  ├── graphdata/             # DRKnows Knowledge Graph       |
+|  ├── api_key.txt            # (Optional) Local API key      |
 |  └── profile/               # stats.db (Personal progress)  |
 +-------------------------------------------------------------+
 ```
@@ -77,9 +94,10 @@ Grab the latest release for your operating system from [Releases](https://github
 
 ### 2. Extract & Run
 1. Unzip the folder anywhere you like (e.g. `Desktop`, `Documents`, or `C:\Users\<Name>\USMLEStudyHelper`).
-2. Double-click **`USMLE-Helper.exe`** (or `./USMLE-Helper` on Linux).
-3. The engine will initialize your local database and automatically open your default browser to **[usmle.semere.dev](https://usmle.semere.dev)**.
-4. Start studying!
+2. *(Optional)* Paste your OpenRouter key into an `api_key.txt` file in that folder if using AI graph features.
+3. Double-click **`USMLE-Helper.exe`** (or `./USMLE-Helper` on Linux).
+4. The engine will initialize your local database and automatically open your default browser to **[usmle.semere.dev](https://usmle.semere.dev)**.
+5. Start studying!
 
 > **Note:** To back up your study data, simply copy the `profile/` folder inside your `USMLEStudyHelper` directory.
 
@@ -107,12 +125,8 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
-pip install fastapi uvicorn pydantic pyinstaller
-
-# Run the local engine
-python launcher.py
+pip install fastapi uvicorn pydantic pyinstaller networkx httpx
 ```
-* Interactive API docs will be available at: `https://usmle-local-engine.semere.dev:8000/docs` (or `http://127.0.0.1:8000/docs`).
 
 ### 3. Frontend Setup
 In a separate terminal:
@@ -133,14 +147,6 @@ npm run dev
 
 Automated releases for Windows and Linux are compiled and packaged on every tagged release (`v*`) via GitHub Actions and published directly to [GitHub Releases](https://github.com/SemereWubshet/usmle-study-helper/releases).
 
-### Manual Local Build (Optional)
-If you want to build the executable locally on your own machine instead of using GitHub Actions:
-```bash
-cd src/backend
-pyinstaller usmle_engine.spec --clean --noconfirm
-```
-PyInstaller will output the executable bundle into a local `src/backend/dist/USMLEStudyHelper/` directory on your computer (this folder is ignored by git to keep repository history clean).
-
 ---
 
 ## 🛡️ Security & Browser Sandboxing
@@ -150,6 +156,13 @@ Connecting a remote HTTPS website (`https://usmle.semere.dev`) to a local backen
 * **Loopback Subdomain:** `usmle-local-engine.semere.dev` resolves to `127.0.0.1`.
 * **Universal TLS:** Uvicorn is configured with trusted Let's Encrypt certificates bundled with the release package, enabling HTTPS-to-HTTPS loopback with zero security warnings.
 * **CORS Protection:** The FastAPI engine strictly accepts requests originating from `usmle.semere.dev` and local development ports.
+
+---
+
+## 📚 Acknowledgments & Citations
+
+* **DR.KNOWS:** Medical knowledge graph ontologies, vocabularies, and clinical relationship networks adapted from the [DR.KNOWS](https://github.com/drknows/drknows) biomedical project.
+* **National Library of Medicine & openFDA:** Sourced clinical drug labels, RxNorm concepts, and MedlinePlus topics.
 
 ---
 
