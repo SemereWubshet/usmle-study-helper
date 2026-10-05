@@ -159,7 +159,23 @@ export default function Session() {
   // Encyclopedia Sidebar Hook
   const encyclopedia = useEncyclopediaSearch()
 
-  if (!sessionData) return null
+  const effectiveAttempts = location.state?.attempts || attempts
+  const activeReviewQuestion = sessionData?.questions?.[review.selectedReviewIndex]
+  const activeReviewAttempt = effectiveAttempts[review.selectedReviewIndex]
+
+  // Currently displayed question for graph/clue extraction
+  const currentExamQuestion = isReviewMode ? activeReviewQuestion : question
+  const currentCorrectAnswer = currentExamQuestion?.correct_text || (
+    currentExamQuestion?.options && currentExamQuestion.options.length > 0 ? currentExamQuestion.options[0] : ''
+  )
+  const currentOptions = currentExamQuestion?.options || options || []
+
+  // Persistent Clinical Graph State across sidebar toggles (Must be called unconditionally!)
+  const clinicalGraph = useClinicalGraphSession(
+    currentExamQuestion?.question || '',
+    currentCorrectAnswer || '',
+    currentOptions
+  )
 
   const handleFinishReview = () => {
     if (sessionData?.session_id) {
@@ -173,6 +189,8 @@ export default function Session() {
     navigate('/')
   }
 
+  if (!sessionData) return null
+
   if (isLoadingQuestion && !isReviewMode) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -180,24 +198,6 @@ export default function Session() {
       </div>
     )
   }
-
-  const effectiveAttempts = location.state?.attempts || attempts
-  const activeReviewQuestion = sessionData?.questions?.[review.selectedReviewIndex]
-  const activeReviewAttempt = effectiveAttempts[review.selectedReviewIndex]
-
-  // Currently displayed question for graph/clue extraction
-  const currentExamQuestion = isReviewMode ? activeReviewQuestion : question
-  const currentCorrectAnswer = currentExamQuestion?.correct_text || (
-    currentExamQuestion?.options && currentExamQuestion.options.length > 0 ? currentExamQuestion.options[0] : ''
-  )
-  const currentOptions = currentExamQuestion?.options || options || []
-
-  // Persistent Clinical Graph State across sidebar toggles
-  const clinicalGraph = useClinicalGraphSession(
-    currentExamQuestion?.question || '',
-    currentCorrectAnswer || '',
-    currentOptions
-  )
 
   // During mock exam active testing, sidebar is locked closed to preserve exam conditions
   const showSidebar = (isReviewMode || examMode !== 'mock_exam') && activeSidePanel !== 'none'

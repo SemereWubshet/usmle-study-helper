@@ -68,12 +68,12 @@ export function SessionHeader({
               onClick={() => onTogglePanel(isMedSearchOpen ? 'none' : 'medsearch')}
               className={`h-9 px-3 text-xs font-medium rounded-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.97] active:translate-y-px ${
                 isMedSearchOpen
-                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 shadow-2xs'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300'
+                  ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 shadow-2xs'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'
               }`}
               title="Toggle MedSearch"
             >
-              <Search className={`w-3.5 h-3.5 ${isMedSearchOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} />
+              <Search className={`w-3.5 h-3.5 ${isMedSearchOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`} />
               <span>MedSearch</span>
             </button>
 
@@ -178,12 +178,12 @@ export function SessionHeader({
               onClick={() => onTogglePanel(isMedSearchOpen ? 'none' : 'medsearch')}
               className={`h-8 px-2.5 text-xs font-medium rounded-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.97] active:translate-y-px ${
                 isMedSearchOpen
-                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 shadow-2xs'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300'
+                  ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 shadow-2xs'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300'
               }`}
               title="Toggle MedSearch"
             >
-              <Search className={`w-3.5 h-3.5 ${isMedSearchOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} />
+              <Search className={`w-3.5 h-3.5 ${isMedSearchOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`} />
               <span>MedSearch</span>
             </button>
 
