@@ -79,3 +79,8 @@ api_key.env
 # Knowledge graph binaries
 *.pkl
 src/backend/graphdata/
+
+# Local release staging and packages
+package/
+*.tar.gz
+*.zip

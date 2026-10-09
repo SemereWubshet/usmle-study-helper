@@ -23,6 +23,8 @@ a = Analysis(
         'uvicorn.lifespan.on',
         'fastapi',
         'pydantic',
+        'httpx',
+        'networkx',
         'sqlite3',
     ],
     hookspath=[],

@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { BookOpen, Clock } from 'lucide-react'
-import { ExportPromptButton } from '@/components/ExportPromptButton'
+import { Clock } from 'lucide-react'
+import { QuestionExplanationCard } from './QuestionExplanationCard'
 import type { QuestionExportData } from '@/utils/promptTemplates'
 import type { StoredAttempt } from '../types'
 import type { Question } from '@/api'
@@ -81,7 +81,7 @@ export function ReviewQuestionDetail({
               </div>
             )}
 
-            <ExportPromptButton questionData={exportPromptData} />
+
           </div>
         </div>
 
@@ -127,17 +127,22 @@ export function ReviewQuestionDetail({
           )
         })}
 
-        {explanation && (
-          <div className="mt-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-2">
-            <div className="flex items-center space-x-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-              <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Official Educational Explanation</span>
-            </div>
-            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 select-text whitespace-pre-wrap">
-              {explanation}
-            </p>
-          </div>
-        )}
+        {/* Unified Explanation & AI Rationale Card for Review Mode */}
+        <div className="mt-6">
+          <QuestionExplanationCard
+            questionId={question?.id || attempt?.questionId || fallbackQuestionId || `rev-${questionIndex}`}
+            questionText={currentQuestionText}
+            options={rawOptions}
+            correctAnswerText={question?.correct_text || attempt?.correctText || rawOptions[attempt?.correctOption ?? 0] || ''}
+            correctOptionIndex={attempt?.correctOption ?? 0}
+            selectedOptionIndex={attempt?.selectedOption ?? null}
+            officialExplanation={explanation}
+            subject={question?.subject || attempt?.subject || undefined}
+            isCorrect={attempt?.isCorrect}
+            exportData={exportPromptData}
+            isReviewView={true}
+          />
+        </div>
       </CardContent>
     </Card>
   )

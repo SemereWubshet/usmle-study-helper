@@ -25,7 +25,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller fastapi uvicorn pydantic
+          pip install pyinstaller fastapi uvicorn pydantic httpx networkx
 
       - name: Provision SSL Certificates from Secrets
         env:
@@ -46,6 +46,7 @@ jobs:
           # Create clean portable staging directory
           mkdir -p package/USMLEStudyHelper/certs
           mkdir -p package/USMLEStudyHelper/datasets
+          mkdir -p package/USMLEStudyHelper/graphdata
           mkdir -p package/USMLEStudyHelper/profile
 
           # Copy compiled binary folder
@@ -54,11 +55,17 @@ jobs:
           # Ensure execution permissions on Linux binary
           chmod +x package/USMLEStudyHelper/USMLE-Helper
 
-          # Copy certificates and datasets
+          # Copy certificates, datasets, and clinical knowledge graph
           cp src/backend/certs/*.pem package/USMLEStudyHelper/certs/
           cp src/backend/datasets/*.db package/USMLEStudyHelper/datasets/
+          if [ -d "src/backend/graphdata" ]; then
+            cp -r src/backend/graphdata/* package/USMLEStudyHelper/graphdata/
+          fi
 
-          # Package into tar.gz and zip
+          # Provide placeholder api_key.txt template
+          echo "# Paste OpenRouter API key here: OPENROUTER_API_KEY=sk-or-v1-..." > package/USMLEStudyHelper/api_key.txt
+
+          # Package into tar.gz
           cd package
           tar -czvf ../USMLEStudyHelper-Linux.tar.gz USMLEStudyHelper
 

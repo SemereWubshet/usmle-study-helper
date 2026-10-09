@@ -169,3 +169,30 @@ export const fetchEncyclopedia = async (term: string, source: MedSearchProvider 
   if (!res.ok) throw new Error(`Encyclopedia lookup failed with status ${res.status}`);
   return res.json();
 };
+// --- AI Clinical Explanation API ---
+export interface ExplainQuestionPayload {
+  question: string;
+  options: string[];
+  correct_answer: string;
+  selected_answer?: string;
+  subject?: string;
+  user_api_key?: string;
+}
+
+export interface ExplainQuestionResult {
+  explanation: string;
+  model_used: string;
+}
+
+export const fetchAiExplanation = async (payload: ExplainQuestionPayload): Promise<ExplainQuestionResult> => {
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/explain-question`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Failed to generate explanation (status ${res.status})`);
+  }
+  return res.json();
+};
