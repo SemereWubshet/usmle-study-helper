@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { ExportPromptButton } from '@/components/ExportPromptButton'
+import { QuestionExplanationCard } from './QuestionExplanationCard'
 import type { QuestionExportData } from '@/utils/promptTemplates'
 import type { Question, AttemptOut } from '@/api'
 
@@ -60,9 +60,7 @@ export function ActiveQuestionCard({
               </Badge>
             ) : <div />}
 
-            {examMode !== 'mock_exam' && (
-              <ExportPromptButton questionData={exportData} />
-            )}
+
           </div>
 
           <CardTitle className="text-lg font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-2">
@@ -130,36 +128,21 @@ export function ActiveQuestionCard({
         </CardFooter>
       </Card>
 
-      {/* Explanation Banner when answered in tutor mode */}
+      {/* Unified Explanation & AI Rationale Card when answered in tutor mode */}
       {attemptResult && examMode === 'tutor' && (
-        <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-          <CardHeader>
-            <div className="flex items-center space-x-2">
-              <span className={`text-sm font-semibold px-2.5 py-1 rounded ${attemptResult.is_correct ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800' : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800'}`}>
-                {attemptResult.is_correct ? 'Correct' : 'Incorrect'}
-              </span>
-              <span className="text-sm text-slate-500 dark:text-slate-400">
-                Correct choice was ({String.fromCharCode(65 + attemptResult.correct_option)})
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {question?.explanation ? (
-              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 whitespace-pre-wrap select-text">
-                {question.explanation}
-              </p>
-            ) : (
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 space-y-1">
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Correct Answer: {String.fromCharCode(65 + attemptResult.correct_option)} {question?.correct_text ? `— ${question.correct_text}` : ''}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-500">
-                  This official dataset does not provide extended rationales.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <QuestionExplanationCard
+          questionId={question?.id || 'active-q'}
+          questionText={question?.question || ''}
+          options={options}
+          correctAnswerText={question?.correct_text || options[attemptResult.correct_option] || ''}
+          correctOptionIndex={attemptResult.correct_option}
+          selectedOptionIndex={selectedOption}
+          officialExplanation={question?.explanation}
+          subject={question?.subject || undefined}
+          isCorrect={attemptResult.is_correct}
+          exportData={exportData}
+          isReviewView={false}
+        />
       )}
     </>
   )

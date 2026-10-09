@@ -34,15 +34,15 @@
   * **RxNorm:** Normalized clinical drug concepts, generic formulations, strengths, and branded equivalents from the National Library of Medicine.
 * **MedGraph (Clinical Knowledge Constellation):** An interactive, dynamic pathophysiology visualizer that traces reasoning pathways from patient vignette clues to candidate diagnoses:
   * **DR.KNOWS Biomedical Ontology:** Grounded in a high-yield pruned knowledge graph linking UMLS / SNOMED CT clinical concepts with precise medical relations (`causes`, `manifestation of`, `associated with`, `treats`).
-  * **Bidirectional Pathfinding:** Fast bidirectional Dijkstra algorithms that discover multi-hop causal chains connecting patient findings to target conditions.
   * **Interactive Context Halos:** Surrounding differential nodes that students can click to add as additional findings or explore connected pathologies.
+* **AI Clinical Explanations (On-Demand Rationale):** For questions lacking official answer breakdowns, students can generate structured, high-yield clinical rationales with distractor analyses powered by OpenRouter directly from their local engine.
 * **Engine Version Intelligence:** An unobtrusive, non-blocking notification in the web app that notifies students when a newer local engine release is available on GitHub.
 
 ---
 
 ## 🔒 100% Local AI & API Key Privacy
 
-For students using AI features (such as clinical clue extraction via OpenRouter) or pathophysiological knowledge graph convergence:
+For students using AI features (such as clinical clue extraction or on-demand question explanations via OpenRouter):
 
 * **Your API Key Never Leaves Your Computer:** We do not operate intermediate proxy servers or telemetry databases. Requests to OpenRouter are dispatched directly from your local desktop engine (`127.0.0.1`) to the AI provider.
 * **Zero-Touch Local File Configuration:** You do not need to enter your API key into a website form if you prefer not to. You can simply create a file named `api_key.txt` inside your `USMLEStudyHelper` folder containing your key (or set `OPENROUTER_API_KEY=sk-or-...`). The desktop engine automatically loads it on launch.
@@ -146,6 +146,17 @@ npm run dev
 ## 📦 Building Standalone Releases
 
 Automated releases for Windows and Linux are compiled and packaged on every tagged release (`v*`) via GitHub Actions and published directly to [GitHub Releases](https://github.com/SemereWubshet/usmle-study-helper/releases).
+
+### Local Release Build (Testing Before Commit)
+You can test the exact PyInstaller compilation and package assembly locally at any time:
+```bash
+# Build the portable release folder locally:
+python3 build_local_release.py
+
+# Or build and test-run immediately:
+python3 build_local_release.py --run
+```
+The output package is assembled cleanly into `package/USMLEStudyHelper/` with certificates, databases, and knowledge graphs ready to test.
 
 ---
 

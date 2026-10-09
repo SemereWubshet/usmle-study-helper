@@ -76,6 +76,11 @@ api_key.env
 *.env.*
 !*.env.example
 
-# Knowledge graph binaries
+# Knowledge graph binaries (raw 200MB pkl ignored, 47MB pkl.gz tracked)
 *.pkl
-src/backend/graphdata/
+!src/backend/graphdata/usmle_clinical_graph.pkl.gz
+
+# Local release staging and packages
+package/
+*.tar.gz
+*.zip

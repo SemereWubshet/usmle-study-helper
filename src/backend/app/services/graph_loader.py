@@ -1,3 +1,4 @@
+import gzip
 import pickle
 import logging
 import networkx as nx
@@ -32,8 +33,12 @@ def get_graph_and_vocab() -> Tuple[nx.DiGraph, Dict[str, str], Dict[str, str]]:
         if not USMLE_CLINICAL_GRAPH_PATH.exists():
             raise FileNotFoundError(f"Pruned clinical graph package not found at {USMLE_CLINICAL_GRAPH_PATH}")
 
-        with open(USMLE_CLINICAL_GRAPH_PATH, "rb") as f:
-            package = pickle.load(f)
+        if str(USMLE_CLINICAL_GRAPH_PATH).endswith(".gz"):
+            with gzip.open(USMLE_CLINICAL_GRAPH_PATH, "rb") as f:
+                package = pickle.load(f)
+        else:
+            with open(USMLE_CLINICAL_GRAPH_PATH, "rb") as f:
+                package = pickle.load(f)
 
         _clinical_graph = package["graph"]
         _cui_to_name = package["cui_to_name"]

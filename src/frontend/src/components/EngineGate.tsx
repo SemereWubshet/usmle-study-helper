@@ -86,13 +86,32 @@ export default function EngineGate({ children }: EngineGateProps) {
 
   useEffect(() => {
     if (!health) return
-    // Send an immediate heartbeat upon connecting
-    fetch(`${API_BASE_URL}/api/v1/heartbeat`, { method: 'POST' }).catch(() => {})
-    // Send a heartbeat periodically while this tab is open
-    const interval = setInterval(() => {
+
+    const sendHeartbeat = () => {
       fetch(`${API_BASE_URL}/api/v1/heartbeat`, { method: 'POST' }).catch(() => {})
-    }, 45000)
-    return () => clearInterval(interval)
+    }
+
+    // Send an immediate heartbeat upon connecting
+    sendHeartbeat()
+
+    // Send a heartbeat periodically while this tab is open (every 30 seconds)
+    const interval = setInterval(sendHeartbeat, 30000)
+
+    // Immediately refresh the watchdog whenever the user focuses or returns to the tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        sendHeartbeat()
+      }
+    }
+
+    window.addEventListener('focus', sendHeartbeat)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', sendHeartbeat)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [health])
 
   if (checking && !health) {

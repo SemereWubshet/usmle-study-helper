@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import signal
 import threading
@@ -6,12 +7,12 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
-APP_VERSION = "0.7.0"
-MIN_FRONTEND_VERSION = "0.7.0"
+APP_VERSION = "0.8.0"
+MIN_FRONTEND_VERSION = "0.8.0"
 
 LAST_HEARTBEAT = time.time()
-WATCHDOG_TIMEOUT_SECONDS = 120
-WATCHDOG_GRACE_PERIOD = 120
+WATCHDOG_TIMEOUT_SECONDS = 300
+WATCHDOG_GRACE_PERIOD = 300
 
 DEFAULT_HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -19,8 +20,12 @@ DEFAULT_HTTP_HEADERS = {
 }
 
 # Resolve backend root directory
-BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
-REPO_ROOT = BACKEND_DIR.parent.parent
+if getattr(sys, 'frozen', False):
+    BACKEND_DIR = Path(sys.executable).resolve().parent
+    REPO_ROOT = BACKEND_DIR
+else:
+    BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+    REPO_ROOT = BACKEND_DIR.parent.parent
 
 
 def load_local_api_key() -> str:
@@ -72,7 +77,12 @@ FALLBACK_CLUE_MODELS = [
 
 # Unified Pruned Clinical Knowledge Graph Package
 GRAPHDATA_DIR = BACKEND_DIR / "graphdata"
-USMLE_CLINICAL_GRAPH_PATH = GRAPHDATA_DIR / "usmle_clinical_graph.pkl"
+if not GRAPHDATA_DIR.exists() and (BACKEND_DIR / "_internal" / "graphdata").exists():
+    GRAPHDATA_DIR = BACKEND_DIR / "_internal" / "graphdata"
+
+USMLE_CLINICAL_GRAPH_GZ_PATH = GRAPHDATA_DIR / "usmle_clinical_graph.pkl.gz"
+USMLE_CLINICAL_GRAPH_RAW_PATH = GRAPHDATA_DIR / "usmle_clinical_graph.pkl"
+USMLE_CLINICAL_GRAPH_PATH = USMLE_CLINICAL_GRAPH_GZ_PATH if USMLE_CLINICAL_GRAPH_GZ_PATH.exists() else USMLE_CLINICAL_GRAPH_RAW_PATH
 
 
 def update_heartbeat():

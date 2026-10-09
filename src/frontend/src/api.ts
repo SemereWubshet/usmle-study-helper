@@ -53,13 +53,35 @@ export const checkEngineHealth = async (customBaseUrl?: string): Promise<EngineH
   return res.json();
 };
 
-// Intercepts API fetch errors when the engine shuts down and notifies the UI gate
+// Tracks health check verification to avoid spamming the health endpoint on network errors
+let isVerifyingDisconnect = false;
+
+// Intercepts API fetch errors, validates whether the engine is truly offline, and notifies the UI gate
 const safeFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   try {
     const res = await fetch(input, init);
     return res;
-  } catch (err) {
-    window.dispatchEvent(new CustomEvent('engine-disconnected'));
+  } catch (err: any) {
+    // 1. Never disconnect for user/browser-aborted requests (e.g. fast tab navigation)
+    if (err?.name === 'AbortError') {
+      throw err;
+    }
+
+    // 2. Before kicking the user out to the gate, double-check whether the engine is actually dead
+    if (!isVerifyingDisconnect) {
+      isVerifyingDisconnect = true;
+      checkEngineHealth()
+        .then(() => {
+          // Engine responded fine; this was just a transient route error or network blip
+          isVerifyingDisconnect = false;
+        })
+        .catch(() => {
+          // Confirmed offline: notify the UI gate
+          isVerifyingDisconnect = false;
+          window.dispatchEvent(new CustomEvent('engine-disconnected'));
+        });
+    }
+
     throw err;
   }
 };
@@ -167,5 +189,32 @@ export const fetchEncyclopedia = async (term: string, source: MedSearchProvider 
   if (!term || term.trim().length < 2) return [];
   const res = await safeFetch(`${API_BASE_URL}/api/v1/encyclopedia?term=${encodeURIComponent(term.trim())}&source=${encodeURIComponent(source)}`);
   if (!res.ok) throw new Error(`Encyclopedia lookup failed with status ${res.status}`);
+  return res.json();
+};
+// --- AI Clinical Explanation API ---
+export interface ExplainQuestionPayload {
+  question: string;
+  options: string[];
+  correct_answer: string;
+  selected_answer?: string;
+  subject?: string;
+  user_api_key?: string;
+}
+
+export interface ExplainQuestionResult {
+  explanation: string;
+  model_used: string;
+}
+
+export const fetchAiExplanation = async (payload: ExplainQuestionPayload): Promise<ExplainQuestionResult> => {
+  const res = await safeFetch(`${API_BASE_URL}/api/v1/explain-question`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Failed to generate explanation (status ${res.status})`);
+  }
   return res.json();
 };
