@@ -1,15 +1,5 @@
 import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
-import { 
-  Target, 
-  Activity, 
-  Zap, 
-  BookOpen, 
-  GraduationCap, 
-  Layers
-} from 'lucide-react'
+import { BookOpen, GraduationCap, Layers } from 'lucide-react'
 
 interface SubjectStat {
   subject: string;
@@ -55,127 +45,146 @@ export function PreviewAnalytics() {
   const progressPercent = (todayAnswered / dailyGoal) * 100
 
   return (
-    <div className="space-y-4 select-text">
-      {/* Daily Target Card matching Analytics.tsx */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-16 bg-emerald-500/5 blur-2xl rounded-full" />
-        <CardContent className="p-4 space-y-3 relative z-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">Daily Target</h4>
-              <p className="text-xs text-slate-500">
-                You are 12 questions away from your daily goal of {dailyGoal}.
-              </p>
-            </div>
-            <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 text-xs">
-              70% Complete
-            </Badge>
+    <div className="space-y-6 select-text">
+      {/* 1. Header with Daily Target Meter matching Analytics.tsx */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-3 border-b border-[#E3E8E5] dark:border-slate-800">
+        <div>
+          <div className="text-[11px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
+            Study Analytics Demo
           </div>
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs font-medium">
-              <span className="text-slate-700 dark:text-slate-300">{todayAnswered} Answered Today</span>
-              <span className="text-emerald-600 dark:text-emerald-400">{dailyGoal} Goal</span>
-            </div>
-            <Progress value={progressPercent} className="h-2 bg-slate-100 dark:bg-slate-800" />
+          <h2 className="font-heading font-medium text-2xl text-[#1E2B27] dark:text-white mt-0.5">
+            Your progress
+          </h2>
+        </div>
+
+        <div className="w-full sm:w-56 pb-0.5">
+          <div className="flex items-baseline justify-between gap-2 text-xs">
+            <span className="text-[#3E4A45] dark:text-slate-400 font-medium">Daily target</span>
+            <span className="font-heading font-medium text-[16px] text-[#1E2B27] dark:text-white">
+              {todayAnswered} <span className="text-xs font-normal text-[#4F5C57]">of {dailyGoal} today</span>
+            </span>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Global 3-Metric Mini Row */}
-      <div className="grid grid-cols-3 gap-2.5">
-        <Card className="p-3 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-center">
-          <Target className="w-4 h-4 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
-          <p className="text-[10px] text-slate-500">Total Answered</p>
-          <p className="text-lg font-bold text-slate-900 dark:text-white">420</p>
-        </Card>
-
-        <Card className="p-3 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-center">
-          <Activity className="w-4 h-4 mx-auto mb-1 text-emerald-600 dark:text-emerald-400" />
-          <p className="text-[10px] text-slate-500">Accuracy</p>
-          <p className="text-lg font-bold text-slate-900 dark:text-white">76.2%</p>
-        </Card>
-
-        <Card className="p-3 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-center">
-          <Zap className="w-4 h-4 mx-auto mb-1 text-orange-600 dark:text-orange-400" />
-          <p className="text-[10px] text-slate-500">Streak</p>
-          <p className="text-lg font-bold text-slate-900 dark:text-white">8 Days</p>
-        </Card>
+          <div className="mt-1.5 h-1.5 rounded-full bg-[#EDF0EE] dark:bg-slate-800 overflow-hidden">
+            <div 
+              className="h-full rounded-full bg-[#0B7A5A] transition-all duration-500" 
+              style={{ width: `${progressPercent}%` }} 
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Scope Readiness Card with Exam Scope Selector */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        {/* Scope Selector Header Tabs */}
-        <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setSelectedExamScope('USMLE Step 1')}
-              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                selectedExamScope === 'USMLE Step 1'
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              <BookOpen className="w-3 h-3 text-emerald-500" />
-              <span>USMLE Step 1</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedExamScope('USMLE Step 2 & 3')}
-              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                selectedExamScope === 'USMLE Step 2 & 3'
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              <GraduationCap className="w-3 h-3 text-emerald-500" />
-              <span>USMLE Step 2 & 3</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedExamScope('MedMCQA')}
-              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                selectedExamScope === 'MedMCQA'
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              <Layers className="w-3 h-3 text-indigo-500" />
-              <span>MedMCQA</span>
-            </button>
+      {/* 2. Floating Fraunces KPI Stats Row */}
+      <div className="grid grid-cols-3 gap-4 py-1">
+        <div>
+          <div className="font-heading font-medium text-2xl sm:text-3xl text-[#1E2B27] dark:text-white leading-[1.1]">
+            420
+          </div>
+          <div className="mt-1 text-[13px] font-semibold text-[#1E2B27] dark:text-slate-200">
+            Total answered
+          </div>
+          <div className="mt-0.5 text-[11px] text-[#4F5C57] dark:text-slate-400 leading-tight">
+            6.0% of question bank
           </div>
         </div>
 
-        {/* Discipline Readiness Bars */}
-        <CardContent className="p-3.5 space-y-2.5">
+        <div>
+          <div className="font-heading font-medium text-2xl sm:text-3xl text-[#1E2B27] dark:text-white leading-[1.1]">
+            76.2%
+          </div>
+          <div className="mt-1 text-[13px] font-semibold text-[#1E2B27] dark:text-slate-200">
+            Global accuracy
+          </div>
+          <div className="mt-0.5 text-[11px] text-[#4F5C57] dark:text-slate-400 leading-tight">
+            Goal: 80% mastery
+          </div>
+        </div>
+
+        <div>
+          <div className="font-heading font-medium text-2xl sm:text-3xl text-[#1E2B27] dark:text-white leading-[1.1]">
+            8 days
+          </div>
+          <div className="mt-1 text-[13px] font-semibold text-[#1E2B27] dark:text-slate-200">
+            Current streak
+          </div>
+          <div className="mt-0.5 text-[11px] text-[#4F5C57] dark:text-slate-400 leading-tight">
+            Keep momentum rolling
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Scope Readiness Breakdown Card */}
+      <div className="w-full bg-[#FAF9F6] dark:bg-slate-900/60 border border-[#E3E8E5] dark:border-slate-800 rounded-[24px] p-5 space-y-4">
+        {/* Scope Pill Switcher */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setSelectedExamScope('USMLE Step 1')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              selectedExamScope === 'USMLE Step 1'
+                ? 'bg-[#1E2B27] text-white dark:bg-white dark:text-[#1E2B27] shadow-2xs'
+                : 'bg-white dark:bg-slate-800 border border-[#E3E8E5] dark:border-slate-700 text-[#4F5C57] dark:text-slate-300 hover:text-[#1E2B27]'
+            }`}
+          >
+            <BookOpen className="w-3 h-3 text-[#0B7A5A]" />
+            <span>USMLE Step 1</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedExamScope('USMLE Step 2 & 3')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              selectedExamScope === 'USMLE Step 2 & 3'
+                ? 'bg-[#1E2B27] text-white dark:bg-white dark:text-[#1E2B27] shadow-2xs'
+                : 'bg-white dark:bg-slate-800 border border-[#E3E8E5] dark:border-slate-700 text-[#4F5C57] dark:text-slate-300 hover:text-[#1E2B27]'
+            }`}
+          >
+            <GraduationCap className="w-3 h-3 text-[#0B7A5A]" />
+            <span>USMLE Step 2 & 3</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedExamScope('MedMCQA')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              selectedExamScope === 'MedMCQA'
+                ? 'bg-[#1E2B27] text-white dark:bg-white dark:text-[#1E2B27] shadow-2xs'
+                : 'bg-white dark:bg-slate-800 border border-[#E3E8E5] dark:border-slate-700 text-[#4F5C57] dark:text-slate-300 hover:text-[#1E2B27]'
+            }`}
+          >
+            <Layers className="w-3 h-3 text-[#434575]" />
+            <span>MedMCQA</span>
+          </button>
+        </div>
+
+        {/* Discipline Bars */}
+        <div className="space-y-3 pt-1">
           {subjects.map((s) => {
+            const isMastery = s.accuracy >= 80
             const isPassing = s.accuracy >= 65
             return (
               <div key={s.subject} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{s.subject}</span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-[11px] text-slate-400">{s.totalAnswered} q</span>
-                    <span className={`font-bold ${isPassing ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                  <span className="font-medium text-[#1E2B27] dark:text-slate-200">{s.subject}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-[#4F5C57] dark:text-slate-400">{s.totalAnswered} questions</span>
+                    <span className={`font-semibold ${isMastery ? 'text-[#0A5A43] dark:text-emerald-300' : isPassing ? 'text-[#0B7A5A] dark:text-emerald-400' : 'text-[#8A2F16] dark:text-rose-300'}`}>
                       {s.accuracy.toFixed(1)}%
                     </span>
                   </div>
                 </div>
-                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-1.5 w-full bg-[#EDF0EE] dark:bg-slate-800 rounded-full overflow-hidden">
                   <div
                     style={{ width: `${s.accuracy}%` }}
-                    className={`h-full rounded-full transition-all ${
-                      s.accuracy >= 80 ? 'bg-emerald-500' : s.accuracy >= 70 ? 'bg-emerald-400' : 'bg-amber-400'
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      isMastery ? 'bg-[#0B7A5A]' : isPassing ? 'bg-[#10B981]' : 'bg-[#C9573A]'
                     }`}
                   />
                 </div>
               </div>
             )
           })}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

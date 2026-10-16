@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Sparkles, Loader2, BookOpen, AlertCircle } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { ExportPromptButton } from '@/components/ExportPromptButton';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import type { QuestionExportData } from '@/utils/promptTemplates';
 import { fetchAiExplanation } from '@/api';
 
@@ -33,11 +32,17 @@ export const QuestionExplanationCard: React.FC<QuestionExplanationCardProps> = (
   exportData,
   isReviewView = false,
 }) => {
-  const [aiExplanation, setAiExplanation] = useState<string | null>(() => {
-    return sessionStorage.getItem(`usmle_ai_expl_${questionId}`) || null;
-  });
+  // Do not persist across questions or sessions; strictly stateless per-question
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Clear previous AI explanation immediately when question changes
+  React.useEffect(() => {
+    setAiExplanation(null);
+    setErrorMessage(null);
+    setIsLoadingAi(false);
+  }, [questionId]);
 
   const hasOfficialExplanation = !!(officialExplanation && officialExplanation.trim().length > 0);
 
@@ -59,7 +64,6 @@ export const QuestionExplanationCard: React.FC<QuestionExplanationCardProps> = (
       });
 
       setAiExplanation(res.explanation);
-      sessionStorage.setItem(`usmle_ai_expl_${questionId}`, res.explanation);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to generate AI rationale.');
     } finally {
@@ -68,102 +72,87 @@ export const QuestionExplanationCard: React.FC<QuestionExplanationCardProps> = (
   };
 
   return (
-    <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 shadow-sm rounded-2xl overflow-hidden animate-in fade-in duration-300">
-      <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800/80">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            {!isReviewView && isCorrect !== undefined && (
-              <span
-                className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${
-                  isCorrect
-                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800'
-                    : 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-400 dark:border-rose-800'
-                }`}
-              >
-                {isCorrect ? 'Correct' : 'Incorrect'}
-              </span>
-            )}
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-              <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                {hasOfficialExplanation ? 'Official Rationale' : 'Clinical Explanation'}
-              </span>
-              {!isReviewView && (
-                <span>
-                  • Correct choice was ({String.fromCharCode(65 + correctOptionIndex)})
-                </span>
+    <div className="w-full bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 text-[#1E2B27] dark:text-slate-200 shadow-[0_1px_3px_rgba(30,43,39,0.06)] rounded-[28px] p-6 sm:p-8 space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#E3E8E5] dark:border-slate-800">
+        <div className="flex items-center gap-3 flex-wrap">
+          {!isReviewView && isCorrect !== undefined && (
+            <span
+              className={`text-[13px] font-semibold px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5 ${
+                isCorrect
+                  ? 'bg-[#E3F2EA] text-[#0B5F46] dark:bg-emerald-950 dark:text-emerald-400'
+                  : 'bg-[#FCEDE8] text-[#8A2F16] dark:bg-rose-950 dark:text-rose-400'
+              }`}
+            >
+              {isCorrect ? '✓ Correct' : '✕ Incorrect'}
+            </span>
+          )}
+          <h2 className="text-xl font-semibold text-[#1E2B27] dark:text-white">
+            {hasOfficialExplanation ? 'Official Rationale' : 'Clinical Explanation'}
+          </h2>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {!hasOfficialExplanation && (
+            <button
+              onClick={handleGenerateAiExplanation}
+              disabled={isLoadingAi}
+              className="min-h-[42px] px-5 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 text-[14px] font-semibold hover:bg-[#E3F2EA]/80 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+            >
+              {isLoadingAi ? (
+                <Loader2 className="w-4 h-4 animate-spin text-[#0B7A5A]" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-[#0B7A5A]" />
               )}
-            </div>
+              <span>{aiExplanation ? 'Regenerate AI explanation' : 'Generate AI explanation'}</span>
+            </button>
+          )}
+
+          <ExportPromptButton questionData={exportData} />
+        </div>
+      </div>
+
+      {/* Answer Callout Card */}
+      <div className="p-5 rounded-[18px] bg-[#E3F2EA] dark:bg-emerald-950/40 border border-[#0B7A5A]/20">
+        <div className="text-[15px] text-[#0B5F46] dark:text-emerald-300">
+          <span className="font-medium">Correct answer: </span>
+          <span className="font-semibold">({String.fromCharCode(65 + correctOptionIndex)}) {correctAnswerText}</span>
+        </div>
+        <div className="mt-1.5 text-[13px] text-[#3E4A45] dark:text-slate-400">
+          {hasOfficialExplanation
+            ? 'Official author explanation included below.'
+            : 'This dataset does not include an official author explanation.'}
+        </div>
+      </div>
+
+      {hasOfficialExplanation ? (
+        <div className="text-[15px] leading-relaxed text-[#3E4A45] dark:text-slate-300 select-text">
+          <MarkdownRenderer content={officialExplanation || ''} />
+        </div>
+      ) : aiExplanation ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-[12px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-900/60">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span>AI-Generated Explanation. Please review against primary clinical sources.</span>
           </div>
-
-          <div className="flex items-center gap-2">
-            {!hasOfficialExplanation && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleGenerateAiExplanation}
-                disabled={isLoadingAi}
-                className="h-8 px-2.5 text-xs font-medium gap-1.5 rounded-lg border-emerald-300 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 cursor-pointer shadow-2xs transition-colors"
-                title="Generate an on-demand clinical explanation using AI"
-              >
-                {isLoadingAi ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                )}
-                <span>{aiExplanation ? 'Regenerate AI' : 'AI Explanation'}</span>
-              </Button>
-            )}
-
-            <ExportPromptButton questionData={exportData} />
+          <div className="p-5 rounded-[18px] bg-[#FAF9F6] dark:bg-slate-950/60 border border-[#E3E8E5] dark:border-slate-800 text-[15px] leading-relaxed text-[#1E2B27] dark:text-slate-200 select-text">
+            <MarkdownRenderer content={aiExplanation} />
           </div>
         </div>
-      </CardHeader>
-
-      <CardContent className="pt-4 space-y-3">
-        {hasOfficialExplanation ? (
-          <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 whitespace-pre-wrap select-text">
-            {officialExplanation}
+      ) : isLoadingAi ? (
+        <div className="flex flex-col items-center justify-center p-6 text-center text-[#4F5C57] gap-2.5 animate-pulse">
+          <Sparkles className="w-6 h-6 text-[#0B7A5A] animate-spin" />
+          <p className="text-sm font-medium">
+            Generating clinical breakdown & distractor rationale via OpenRouter...
           </p>
-        ) : aiExplanation ? (
-          <div className="space-y-3">
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap select-text space-y-2">
-              {aiExplanation}
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-amber-700 dark:text-amber-300/90 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900/60">
-              <span className="flex items-center gap-1.5 font-medium">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                AI-Generated Explanation. AI can make mistakes, please review the explanation against official sources.
-              </span>
-            </div>
-          </div>
-        ) : isLoadingAi ? (
-          <div className="flex flex-col items-center justify-center p-6 text-center text-slate-500 dark:text-slate-400 gap-2.5 animate-pulse">
-            <Sparkles className="w-6 h-6 text-emerald-600 dark:text-emerald-400 animate-spin" />
-            <p className="text-xs font-medium">
-              Generating clinical breakdown & distractor rationale via OpenRouter...
-            </p>
-          </div>
-        ) : (
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                Correct Answer: <strong className="text-emerald-600 dark:text-emerald-400">({String.fromCharCode(65 + correctOptionIndex)}) {correctAnswerText}</strong>
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                This dataset does not include an official author explanation.
-              </p>
-            </div>
-          </div>
-        )}
+        </div>
+      ) : null}
 
-        {errorMessage && (
-          <div className="flex items-center gap-2 text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200 dark:border-rose-900/60">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {errorMessage && (
+        <div className="flex items-center gap-2 text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200 dark:border-rose-900/60">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+    </div>
   );
 };

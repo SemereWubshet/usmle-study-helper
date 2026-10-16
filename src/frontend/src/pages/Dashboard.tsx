@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { 
@@ -8,31 +8,38 @@ import {
   type SessionPayload, 
   type SubjectItem 
 } from '../api'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Zap, ArrowRight, BarChart3, BookOpen, GraduationCap } from 'lucide-react'
+import { Zap, BarChart3, BookOpen, GraduationCap } from 'lucide-react'
 
 import { QbankSelector } from '@/features/dashboard/components/QbankSelector'
 import { SubjectSelector } from '@/features/dashboard/components/SubjectSelector'
 import { BlockSizeSelector } from '@/features/dashboard/components/BlockSizeSelector'
-import { AdvancedBenchmarks } from '@/features/dashboard/components/AdvancedBenchmarks'
+import { ExamTimeSelector } from '@/features/dashboard/components/ExamTimeSelector'
+import { GoalsModal } from '@/features/dashboard/components/GoalsModal'
+import { PresetModal } from '@/features/dashboard/components/PresetModal'
+import { getStoredGoals, saveStoredGoals, type UserGoals } from '@/utils/goalsStorage'
+import { getStoredPreset } from '@/utils/presetStorage'
 
 export default function Dashboard() {
   const navigate = useNavigate()
 
+  // Initialize from saved browser preset
+  const initialPreset = useMemo(() => getStoredPreset(), [])
+
   // Session Generator State
-  const [selectedQbank, setSelectedQbank] = useState("medqa_usmle")
-  const [examTarget, setExamTarget] = useState("USMLE Step 1")
-  const [blockCount, setBlockCount] = useState([40])
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['All Subjects'])
+  const [selectedQbank, setSelectedQbank] = useState<string>(initialPreset.selectedQbank)
+  const [examTarget, setExamTarget] = useState<string>(initialPreset.examTarget)
+  const [blockCount, setBlockCount] = useState<number[]>([initialPreset.blockCount])
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(initialPreset.selectedSubjects)
   const [subjectSearch, setSubjectSearch] = useState('')
 
-  // Configurable Review Benchmarks
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [passingThreshold, setPassingThreshold] = useState(60)
-  const [excellenceThreshold, setExcellenceThreshold] = useState(80)
-  const [targetSeconds, setTargetSeconds] = useState(90)
-  const [examDurationMinutes, setExamDurationMinutes] = useState(60)
+  // Exam Time in minutes (stepper like block size)
+  const [examDurationMinutes, setExamDurationMinutes] = useState<number>(initialPreset.examDurationMinutes)
+
+  // Goals modal & preset modal states
+  const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false)
+  const [isPresetModalOpen, setIsPresetModalOpen] = useState(false)
+  const [goals, setGoals] = useState<UserGoals>(getStoredGoals)
 
   // Lightweight summary stats for header
   const { data: stats } = useQuery({
@@ -101,6 +108,15 @@ export default function Dashboard() {
       .reduce((acc, s) => acc + s.count, 0)
   }, [availableSubjects, selectedSubjects])
 
+  // Keep goals synchronized with global changes
+  useEffect(() => {
+    const handleGoalsChanged = (e: any) => {
+      if (e.detail) setGoals(e.detail)
+    }
+    window.addEventListener('usmle_goals_changed', handleGoalsChanged)
+    return () => window.removeEventListener('usmle_goals_changed', handleGoalsChanged)
+  }, [])
+
   const handleStartSession = () => {
     const payload: SessionPayload = {
       qbank: selectedQbank,
@@ -112,9 +128,9 @@ export default function Dashboard() {
     sessionMutation.mutate({
       ...payload,
       customConfig: {
-        passingThreshold,
-        excellenceThreshold,
-        targetSeconds,
+        passingThreshold: goals.passingThreshold,
+        excellenceThreshold: goals.excellenceThreshold,
+        targetSeconds: goals.targetSeconds,
         examMode: 'tutor',
       }
     })
@@ -133,54 +149,57 @@ export default function Dashboard() {
     sessionMutation.mutate({
       ...payload,
       customConfig: {
-        passingThreshold,
-        excellenceThreshold,
-        targetSeconds,
+        passingThreshold: goals.passingThreshold,
+        excellenceThreshold: goals.excellenceThreshold,
+        targetSeconds: goals.targetSeconds,
         examMode: 'mock_exam',
         timeLimitSeconds: examDurationMinutes * 60,
       }
     })
   }
 
+  // Target bank display label
+  const qbankDisplayLabel = useMemo(() => {
+    if (selectedQbank === "medmcqa") return "MedMCQA"
+    if (examTarget === "USMLE Step 2 and Step 3") return "USMLE Step 2 & 3"
+    return examTarget
+  }, [selectedQbank, examTarget])
+
+  // Subjects display label
+  const subjectsDisplayLabel = useMemo(() => {
+    if (selectedSubjects.includes('All Subjects')) return 'All subjects'
+    if (selectedSubjects.length === 1) return selectedSubjects[0]
+    return `${selectedSubjects.length} subjects selected`
+  }, [selectedSubjects])
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
-      {/* Top Banner: Welcome & Fast Launch */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
+    <div className="animate-in fade-in duration-500">
+      {/* Top Header: Fraunces Display Title & Quick Stats */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4 pb-10">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Create Session
+          <h1 className="font-heading font-medium text-4xl sm:text-5xl md:text-[48px] text-[#1E2B27] dark:text-white tracking-tight leading-[1.1]">
+            Create session
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Build customized practice sessions or launch an instant one
-          </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Link to="/analytics">
-            <Button variant="outline" size="sm" className="rounded-xl border-slate-200 dark:border-slate-700 text-xs">
-              <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="rounded-full border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 text-xs px-4 h-10 shadow-[0_1px_2px_rgba(30,43,39,0.05)]"
+            >
+              <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-[#4F5C57]" />
               {stats?.total_answered || 0} Answered ({stats?.global_accuracy || 0}%)
             </Button>
           </Link>
-
-          <Button 
-            onClick={() => sessionMutation.mutate({ 
-              qbank: "medqa_usmle", 
-              block_size: 40, 
-              exam_type: "USMLE Step 1" 
-            })}
-            disabled={sessionMutation.isPending}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-500/20 text-xs px-3.5 h-9"
-          >
-            <Zap className="w-3.5 h-3.5 mr-1.5 fill-current" />
-            Quick Start
-          </Button>
         </div>
       </div>
 
-      {/* Main Interactive Session Creator Card */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <CardContent className="p-6 sm:p-8 space-y-8">
+      {/* Main 2-Column Responsive Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-10 lg:gap-14 items-start">
+        {/* Left Column: Sequential Flow Steps */}
+        <div className="flex flex-col gap-10">
           <QbankSelector
             selectedQbank={selectedQbank}
             examTarget={examTarget}
@@ -212,62 +231,131 @@ export default function Dashboard() {
             totalAvailableInSelection={totalAvailableInSelection}
           />
 
-          <BlockSizeSelector
-            blockCount={blockCount}
-            setBlockCount={setBlockCount}
-            maxAvailable={totalAvailableInSelection}
-          />
+          <section className="space-y-6">
+            <BlockSizeSelector
+              blockCount={blockCount}
+              setBlockCount={setBlockCount}
+              maxAvailable={totalAvailableInSelection}
+            />
 
-          <AdvancedBenchmarks
-            showAdvanced={showAdvanced}
-            setShowAdvanced={setShowAdvanced}
-            passingThreshold={passingThreshold}
-            setPassingThreshold={setPassingThreshold}
-            excellenceThreshold={excellenceThreshold}
-            setExcellenceThreshold={setExcellenceThreshold}
-            targetSeconds={targetSeconds}
-            setTargetSeconds={setTargetSeconds}
-            examDurationMinutes={examDurationMinutes}
-            setExamDurationMinutes={setExamDurationMinutes}
-          />
+            <ExamTimeSelector
+              durationMinutes={examDurationMinutes}
+              setDurationMinutes={setExamDurationMinutes}
+            />
+          </section>
+        </div>
+
+        {/* Right Column: Floating Summary Card & Action Buttons */}
+        {/* Right Column: Floating Summary Card & Action Buttons */}
+        <aside className="lg:sticky lg:top-24 bg-[#EFF4F0] dark:bg-slate-900 border border-[#E3E8E5]/60 dark:border-slate-800 rounded-[28px] p-7 sm:p-8 flex flex-col gap-6 shadow-[0_4px_20px_rgba(30,43,39,0.04)]">
+          <div>
+            {/* Header: Quick start as title with Zap icon, Your session as subtitle with Edit goals */}
+            <div className="flex items-center gap-2 text-[#0B7A5A] dark:text-emerald-400 font-heading font-medium text-[22px]">
+              <Zap className="w-5 h-5 fill-current shrink-0" />
+              <span>Quick start</span>
+            </div>
+
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <span className="text-[12px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
+                Your session
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsPresetModalOpen(true)}
+                className="text-[13px] font-semibold text-[#0B7A5A] dark:text-emerald-400 hover:underline cursor-pointer bg-transparent border-0 p-0"
+              >
+                Edit preset
+              </button>
+            </div>
+            
+            <div className="mt-5 flex flex-col gap-3.5">
+              <div>
+                <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">Bank</div>
+                <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white mt-0.5">
+                  {qbankDisplayLabel}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">Subjects</div>
+                <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white mt-0.5 truncate">
+                  {subjectsDisplayLabel}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">Questions</div>
+                <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white mt-0.5">
+                  {blockCount[0]} in this block
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">Timed exam</div>
+                <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white mt-0.5">
+                  {examDurationMinutes} min
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Action Launch Buttons */}
-          <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Button
+          <div className="flex flex-col gap-3 pt-1">
+            <button
               onClick={handleStartSession}
               disabled={sessionMutation.isPending || totalAvailableInSelection === 0}
-              className="w-full h-14 text-base font-semibold rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              className="w-full min-h-[54px] rounded-2xl bg-[#0B7A5A] hover:bg-[#0B7A5A]/90 text-white font-semibold text-[16px] shadow-[0_10px_24px_rgba(11,122,90,0.22)] transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {sessionMutation.isPending ? (
                 'Generating Session...'
               ) : (
-                
-                <span className="flex items-center justify-center text-sm sm:text-base">
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Start Practice ({blockCount[0]} Qs)
-                  <ArrowRight className="w-4 h-4 ml-1.5" />
-                </span>
+                <>
+                  <BookOpen className="w-4 h-4" />
+                  <span>Start practice</span>
+                </>
               )}
-            </Button>
+            </button>
 
-            <Button
+            <button
               onClick={handleStartMockExam}
               disabled={sessionMutation.isPending || totalAvailableInSelection === 0}
-              className="w-full h-14 text-base font-semibold rounded-2xl bg-indigo-700 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              className="w-full min-h-[54px] rounded-2xl bg-[#434575] hover:bg-[#393A64] text-white font-semibold text-[15px] shadow-[0_4px_14px_rgba(67,69,117,0.22)] transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {sessionMutation.isPending ? (
                 'Preparing Exam...'
               ) : (
-                <span className="flex items-center justify-center text-sm sm:text-base">
-                  <GraduationCap className="w-4 h-4 mr-2" />
-                  Start Exam ({blockCount[0]} Qs • {examDurationMinutes}m)
-                  <ArrowRight className="w-4 h-4 ml-1.5" />
-                </span>
+                <>
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Start exam</span>
+                </>
               )}
-            </Button>
+            </button>
           </div>
-        </CardContent>
-      </Card>
+        </aside>
+      </div>
+
+      <GoalsModal
+        isOpen={isGoalsModalOpen}
+        onClose={() => setIsGoalsModalOpen(false)}
+        onGoalsUpdated={(newGoals) => setGoals(newGoals)}
+      />
+
+      <PresetModal
+        isOpen={isPresetModalOpen}
+        onClose={() => setIsPresetModalOpen(false)}
+        onPresetSaved={(newPreset) => {
+          setSelectedQbank(newPreset.selectedQbank);
+          setExamTarget(newPreset.examTarget);
+          setBlockCount([newPreset.blockCount]);
+          setSelectedSubjects(newPreset.selectedSubjects);
+          setExamDurationMinutes(newPreset.examDurationMinutes);
+          if (newPreset.paceTargetSeconds) {
+            const updatedGoals = { ...goals, targetSeconds: newPreset.paceTargetSeconds };
+            setGoals(updatedGoals);
+            saveStoredGoals(updatedGoals);
+          }
+        }}
+      />
     </div>
   )
 }

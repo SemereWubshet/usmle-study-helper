@@ -1,10 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchDashboardStats } from '../api'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Progress } from '@/components/ui/progress'
-import { Target, Activity, Zap, ArrowUpDown, BookOpen, GraduationCap, Layers } from 'lucide-react'
+import { getStoredGoals, type UserGoals } from '@/utils/goalsStorage'
 
 // Helper to get local YYYY-MM-DD string
 const getLocalDateStr = (date: Date) => date.toLocaleDateString('en-CA')
@@ -15,13 +13,24 @@ export default function Analytics() {
     queryFn: fetchDashboardStats,
   })
 
+  // Goals state synchronized with global updates
+  const [goals, setGoals] = useState<UserGoals>(getStoredGoals)
+
+  useEffect(() => {
+    const handleGoalsChanged = (e: any) => {
+      if (e.detail) setGoals(e.detail)
+    }
+    window.addEventListener('usmle_goals_changed', handleGoalsChanged)
+    return () => window.removeEventListener('usmle_goals_changed', handleGoalsChanged)
+  }, [])
+
   // State for exam scope selector and sorting
   const [selectedExamScope, setSelectedExamScope] = useState<string>('USMLE Step 1')
   const [sortBy, setSortBy] = useState<'weakest' | 'strongest' | 'alphabetical' | 'volume'>('weakest')
 
   // Calculate Real Data Metrics
-  const { todayAnswered, currentStreak, heatmapData } = useMemo(() => {
-    if (!stats?.recent_sessions) return { todayAnswered: 0, currentStreak: 0, heatmapData: Array(84).fill(0) }
+  const { todayAnswered, currentStreak } = useMemo(() => {
+    if (!stats?.recent_sessions) return { todayAnswered: 0, currentStreak: 0 }
 
     const sessions = stats.recent_sessions
     const today = new Date()
@@ -47,23 +56,7 @@ export default function Analytics() {
       }
     }
 
-    // 3. Consistency Heatmap (Last 84 Days)
-    const heatmap = Array.from({ length: 84 }).map((_, i) => {
-      const targetDate = new Date(today)
-      targetDate.setDate(targetDate.getDate() - (83 - i))
-      const targetStr = getLocalDateStr(targetDate)
-      
-      const dayTotal = sessions
-        .filter((s: any) => getLocalDateStr(new Date(s.created_at)) === targetStr)
-        .reduce((sum: number, s: any) => sum + s.questions_answered, 0)
-        
-      if (dayTotal === 0) return 0
-      if (dayTotal <= 10) return 1
-      if (dayTotal <= 25) return 2
-      return 3
-    })
-
-    return { todayAnswered: todayTotal, currentStreak: streak, heatmapData: heatmap }
+    return { todayAnswered: todayTotal, currentStreak: streak }
   }, [stats])
 
   // Filter and sort subject performance by selected exam scope
@@ -93,185 +86,387 @@ export default function Analytics() {
     })
   }, [stats?.subject_performance, selectedExamScope, sortBy])
 
-  if (isLoading) return <div className="space-y-6"><Skeleton className="h-64 w-full rounded-3xl" /></div>
+  // Calculate this week's 7-day activity and 12-week question totals
+  const { thisWeekDays, weeklyTotals, maxWeeklyTotal } = useMemo(() => {
+    const today = new Date()
+    const sessions = stats?.recent_sessions || []
+
+    // 1. Current week (Mon -> Sun)
+    // Find Monday of current week
+    const dayOfWeek = today.getDay() // 0 is Sun, 1 is Mon...
+    const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    const monday = new Date(today)
+    monday.setDate(today.getDate() + distanceToMonday)
+
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((label, index) => {
+      const d = new Date(monday)
+      d.setDate(monday.getDate() + index)
+      const dStr = getLocalDateStr(d)
+      const isToday = dStr === getLocalDateStr(today)
+      const isFuture = d > today && !isToday
+
+      const count = sessions
+        .filter((s: any) => getLocalDateStr(new Date(s.created_at)) === dStr)
+        .reduce((sum: number, s: any) => sum + s.questions_answered, 0)
+
+      return {
+        label,
+        dateStr: dStr,
+        count,
+        isToday,
+        isFuture,
+        hasActivity: count > 0,
+      }
+    })
+
+    // 2. 12-week question history (from 11 weeks ago to this week)
+    const weeks: { weekNum: number; count: number }[] = []
+    for (let w = 11; w >= 0; w--) {
+      const weekStart = new Date(today)
+      weekStart.setDate(today.getDate() - (w * 7 + 6))
+      const weekEnd = new Date(today)
+      weekEnd.setDate(today.getDate() - (w * 7))
+
+      const count = sessions
+        .filter((s: any) => {
+          const sDate = new Date(s.created_at)
+          return sDate >= weekStart && sDate <= weekEnd
+        })
+        .reduce((sum: number, s: any) => sum + s.questions_answered, 0)
+
+      weeks.push({ weekNum: 12 - w, count })
+    }
+
+    const maxWeekly = Math.max(...weeks.map(w => w.count), 280)
+
+    return { thisWeekDays: days, weeklyTotals: weeks, maxWeeklyTotal: maxWeekly }
+  }, [stats])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <Skeleton className="h-20 w-80 rounded-2xl" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <Skeleton className="h-32 rounded-3xl" />
+          <Skeleton className="h-32 rounded-3xl" />
+          <Skeleton className="h-32 rounded-3xl" />
+        </div>
+        <Skeleton className="h-96 w-full rounded-3xl" />
+      </div>
+    )
+  }
 
   const dailyGoal = 40
   const progressPercent = Math.min((todayAnswered / dailyGoal) * 100, 100)
-  const isGoalMet = todayAnswered >= dailyGoal
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Performance Analytics</h1>
-        <p className="text-slate-500 mt-2">Comprehensive tracking of your study discipline, pacing, and subject mastery</p>
+    <div className="animate-in fade-in duration-500 flex flex-col gap-12">
+      {/* Page Title & Daily Target Header */}
+      <div className="flex items-end justify-between gap-6 flex-wrap pt-2">
+        <div>
+          <h1 className="font-heading font-medium text-4xl sm:text-5xl text-[#1E2B27] dark:text-white tracking-tight leading-[1.1]">
+            Your progress
+          </h1>
+          <p className="mt-3 text-lg text-[#3E4A45] dark:text-slate-400">
+            Your study habits.
+          </p>
+        </div>
+
+        {/* Daily Target Progress Meter */}
+        <div className="w-full sm:w-72 sm:min-w-[240px] pb-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[14px] text-[#3E4A45] dark:text-slate-400 font-medium">Daily target</span>
+            <span className="flex items-baseline">
+              <span className="font-heading text-[26px] font-medium text-[#1E2B27] dark:text-white">
+                {todayAnswered}
+              </span>
+              <span className="ml-1.5 text-[14px] text-[#3E4A45] dark:text-slate-400">
+                of {dailyGoal} today
+              </span>
+            </span>
+          </div>
+          <div className="mt-2.5 h-1.5 rounded-full bg-[#E3E8E5] dark:bg-slate-800 overflow-hidden">
+            <div 
+              className="h-full rounded-full bg-[#0B7A5A] transition-all duration-500" 
+              style={{ width: `${progressPercent}%` }} 
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Daily Target Progress */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-32 bg-emerald-500/5 blur-3xl rounded-full" />
-        <CardContent className="p-8 space-y-6 relative z-10">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Daily Target</h2>
-            <p className="text-slate-500">
-              {isGoalMet 
-                ? "Outstanding. You have reached your daily practice goal." 
-                : `You are ${dailyGoal - todayAnswered} questions away from your daily target of ${dailyGoal}.`}
-            </p>
+      {/* Primary KPI Metrics: Fraunces Numbers & Narrative Labels */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-10 py-1">
+        <div>
+          <div className="font-heading font-medium text-3xl sm:text-4xl text-[#1E2B27] dark:text-white leading-[1.1]">
+            {stats?.total_answered || 0}
           </div>
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm font-medium">
-              <span className="text-slate-700 dark:text-slate-300">{todayAnswered} Answered Today</span>
-              <span className="text-emerald-600 dark:text-emerald-400">{dailyGoal} Goal</span>
-            </div>
-            <Progress value={progressPercent} className="h-3 bg-slate-100 dark:bg-slate-800" />
+          <div className="mt-2 text-[15px] font-semibold text-[#1E2B27] dark:text-slate-200">
+            Total answered
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Global Metrics Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/50 rounded-2xl mb-4 text-blue-600 dark:text-blue-400">
-              <Target className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Answered</p>
-            <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats?.total_answered || 0}</h3>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 rounded-2xl mb-4 text-emerald-600 dark:text-emerald-400">
-              <Activity className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Global Accuracy</p>
-            <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats?.global_accuracy || 0}%</h3>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-            <div className="p-3 bg-orange-50 dark:bg-orange-950/50 rounded-2xl mb-4 text-orange-600 dark:text-orange-400">
-              <Zap className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Current Streak</p>
-            <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}</h3>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Consistency Heatmap */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200">Study Consistency</h3>
-          <span className="text-sm text-slate-500">Last 12 Weeks</span>
+          <div className="mt-1 text-[13px] text-[#4F5C57] dark:text-slate-400 leading-snug">
+            {stats?.total_answered 
+              ? `About ${((stats.total_answered / 7009) * 100).toFixed(1)}% of the question bank` 
+              : 'Complete practice questions to build your volume'}
+          </div>
         </div>
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex flex-wrap gap-1.5 md:gap-2">
-              {heatmapData.map((intensity, i) => {
-                const colors = [
-                  'bg-slate-100 dark:bg-slate-800', 
-                  'bg-emerald-200 dark:bg-emerald-950/60', 
-                  'bg-emerald-400 dark:bg-emerald-800', 
-                  'bg-emerald-600 dark:bg-emerald-500'
-                ]
-                return <div key={i} className={`w-3 h-3 md:w-4 md:h-4 rounded-sm ${colors[intensity]} transition-colors hover:ring-2 hover:ring-slate-400`} />
-              })}
-            </div>
-          </CardContent>
-        </Card>
+
+        <div>
+          <div className="font-heading font-medium text-3xl sm:text-4xl text-[#1E2B27] dark:text-white leading-[1.1]">
+            {stats?.global_accuracy || 0}%
+          </div>
+          <div className="mt-2 text-[15px] font-semibold text-[#1E2B27] dark:text-slate-200">
+            Global accuracy
+          </div>
+          <div className="mt-1 text-[13px] text-[#4F5C57] dark:text-slate-400 leading-snug">
+            Your mastery goal is {goals.excellenceThreshold}%
+          </div>
+        </div>
+
+        <div>
+          <div className="font-heading font-medium text-3xl sm:text-4xl text-[#1E2B27] dark:text-white leading-[1.1]">
+            {currentStreak} {currentStreak === 1 ? 'day' : 'days'}
+          </div>
+          <div className="mt-2 text-[15px] font-semibold text-[#1E2B27] dark:text-slate-200">
+            Current streak
+          </div>
+          <div className="mt-1 text-[13px] text-[#4F5C57] dark:text-slate-400 leading-snug">
+            {currentStreak > 0 ? 'Keep momentum rolling today' : 'Answer a question today to start a streak'}
+          </div>
+        </div>
       </section>
 
-      {/* Scope / Subject-Level Readiness with Exam Scope Selector */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 py-4 px-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            {/* Prominent Exam Scope Selector Tabs */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedExamScope('USMLE Step 1')}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                  selectedExamScope === 'USMLE Step 1'
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                }`}
-              >
-                <BookOpen className="w-4 h-4 text-emerald-500" />
-                <span>USMLE Step 1</span>
-              </button>
+      {/* Subject Mastery Section */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold text-[#1E2B27] dark:text-white">
+          Subject mastery
+        </h2>
 
-              <button
-                type="button"
-                onClick={() => setSelectedExamScope('USMLE Step 2 & 3')}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                  selectedExamScope === 'USMLE Step 2 & 3'
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                }`}
-              >
-                <GraduationCap className="w-4 h-4 text-emerald-500" />
-                <span>USMLE Step 2 & 3</span>
-              </button>
+        {/* Bank Filter Tabs & Sorting Select */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setSelectedExamScope('USMLE Step 1')}
+              className={`min-h-[42px] px-5 rounded-full text-[14px] transition-all cursor-pointer ${
+                selectedExamScope === 'USMLE Step 1'
+                  ? 'border border-[#0B7A5A] bg-[#E3F2EA] text-[#0B5F46] font-semibold dark:bg-emerald-950/70 dark:text-emerald-300'
+                  : 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)]'
+              }`}
+            >
+              USMLE Step 1
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setSelectedExamScope('MedMCQA')}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                  selectedExamScope === 'MedMCQA'
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                }`}
-              >
-                <Layers className="w-4 h-4 text-indigo-500" />
-                <span>MedMCQA Bank</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedExamScope('USMLE Step 2 & 3')}
+              className={`min-h-[42px] px-5 rounded-full text-[14px] transition-all cursor-pointer ${
+                selectedExamScope === 'USMLE Step 2 & 3'
+                  ? 'border border-[#0B7A5A] bg-[#E3F2EA] text-[#0B5F46] font-semibold dark:bg-emerald-950/70 dark:text-emerald-300'
+                  : 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)]'
+              }`}
+            >
+              USMLE Step 2 & 3
+            </button>
 
-            {/* Sorting Controls */}
-            <div className="flex items-center space-x-2 self-end md:self-auto">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+            <button
+              type="button"
+              onClick={() => setSelectedExamScope('MedMCQA')}
+              className={`min-h-[42px] px-5 rounded-full text-[14px] transition-all cursor-pointer ${
+                selectedExamScope === 'MedMCQA'
+                  ? 'border border-[#0B7A5A] bg-[#E3F2EA] text-[#0B5F46] font-semibold dark:bg-emerald-950/70 dark:text-emerald-300'
+                  : 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)]'
+              }`}
+            >
+              MedMCQA
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <label htmlFor="sort-select" className="text-[14px] text-[#3E4A45] dark:text-slate-400 font-medium">
+              Sort
+            </label>
+            <div className="relative">
               <select
+                id="sort-select"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                className="min-h-[42px] pl-4 pr-9 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 font-medium text-[14px] text-[#1E2B27] dark:text-slate-200 outline-none cursor-pointer shadow-[0_1px_2px_rgba(30,43,39,0.04)] appearance-none"
               >
-                <option value="weakest">Weakest First</option>
-                <option value="strongest">Strongest First</option>
-                <option value="volume">Most Practiced</option>
-                <option value="alphabetical">Alphabetical (A–Z)</option>
+                <option value="weakest">Weakest</option>
+                <option value="strongest">Strongest</option>
+                <option value="volume">Most practiced</option>
+                <option value="alphabetical">Alphabetical</option>
               </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#4F5C57]">
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </div>
             </div>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="p-6">
+        {/* Subject Accuracy Cards Grid */}
+        <div className="mt-3 bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 rounded-[24px] p-6 sm:p-7 shadow-[0_1px_3px_rgba(30,43,39,0.06)] grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
           {filteredAndSortedSubjects.length === 0 ? (
-            <div className="text-center py-8 text-sm text-slate-400">
-              No questions answered yet for <span className="font-semibold text-slate-600 dark:text-slate-300">{selectedExamScope}</span>. Complete a session to see subject readiness.
+            <div className="col-span-full py-8 text-center text-sm text-[#4F5C57]">
+              No questions answered yet for {selectedExamScope}. Complete a session to see subject readiness.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 animate-in fade-in duration-300">
-              {filteredAndSortedSubjects.map((sub: any) => (
-                <div key={sub.subject} className="space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-medium text-slate-700 dark:text-slate-300">{sub.subject}</span>
-                    <span className="text-slate-500">
-                      <span className={sub.accuracy_percentage >= 70 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-orange-600 dark:text-orange-400 font-bold'}>
-                        {sub.accuracy_percentage}%
+            filteredAndSortedSubjects.map((sub: any) => {
+              const isMastery = sub.accuracy_percentage >= goals.excellenceThreshold
+              const isPassing = sub.accuracy_percentage >= goals.passingThreshold
+
+              let barColor = '#B4530A'
+              if (isMastery) {
+                barColor = '#0A5A43'
+              } else if (isPassing) {
+                barColor = '#0B7A5A'
+              }
+
+              return (
+                <div
+                  key={sub.subject}
+                  className="w-full text-left p-3.5 rounded-2xl hover:bg-[#FAF9F6] dark:hover:bg-slate-800/40 transition-colors"
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[15px] font-medium text-[#1E2B27] dark:text-white truncate">
+                      {sub.subject}
+                    </span>
+                    <span className="flex items-baseline shrink-0">
+                      <span 
+                        className="font-heading text-[20px] font-medium inline-flex items-center gap-1" 
+                        style={{ color: barColor }}
+                      >
+                        {isMastery && <span className="text-[14px] leading-none">★</span>}
+                        <span>{sub.accuracy_percentage}%</span>
                       </span>
-                      <span className="ml-1 text-xs">({sub.total_answered} Qs)</span>
+                      <span className="ml-2 text-[13px] text-[#4F5C57] dark:text-slate-400">
+                        {sub.total_answered} Qs
+                      </span>
                     </span>
                   </div>
-                  <Progress value={sub.accuracy_percentage} className="h-2 bg-slate-100 dark:bg-slate-800" />
+
+                  {/* Visual Accuracy Bar */}
+                  <div className="relative mt-2.5 h-2 rounded-full bg-[#E8ECE9] dark:bg-slate-800 overflow-hidden">
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(sub.accuracy_percentage, 100)}%`,
+                        backgroundColor: barColor,
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </section>
+
+      {/* Study Consistency: Weekly Breakdown & Trend Chart */}
+      <section className="space-y-4">
+        <div className="flex items-baseline justify-between gap-4 flex-wrap">
+          <h2 className="text-2xl font-semibold text-[#1E2B27] dark:text-white">
+            Study consistency
+          </h2>
+          <span className="text-[14px] text-[#3E4A45] dark:text-slate-400">
+            Last 12 weeks
+          </span>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 rounded-[24px] p-7 sm:p-8 shadow-[0_1px_3px_rgba(30,43,39,0.06)] flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
+          {/* Left: This Week 7-Day Dots */}
+          <div className="w-full lg:w-auto">
+            <div className="text-[15px] font-semibold text-[#1E2B27] dark:text-white">
+              This week
+            </div>
+            
+            <div className="mt-4 flex gap-3">
+              {thisWeekDays.map((d, i) => (
+                <div key={i} className="flex flex-col items-center gap-2">
+                  <span
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                      d.isToday
+                        ? 'border-2 border-[#0B7A5A] bg-white dark:bg-slate-900 shadow-xs'
+                        : d.hasActivity
+                        ? 'bg-[#7FD1AE] text-white'
+                        : 'bg-[#EDF0EE] dark:bg-slate-800'
+                    }`}
+                  >
+                    {d.hasActivity && (
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#0B7A5A]" />
+                    )}
+                  </span>
+                  <span
+                    className={`text-[13px] ${
+                      d.isToday
+                        ? 'font-bold text-[#0B7A5A] dark:text-emerald-400'
+                        : 'text-[#3E4A45] dark:text-slate-400'
+                    }`}
+                  >
+                    {d.label}
+                  </span>
                 </div>
               ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            <div className="mt-4 text-[14px] text-[#3E4A45] dark:text-slate-400">
+              {todayAnswered > 0
+                ? `${todayAnswered} questions completed today.`
+                : 'Answer one question today to start a streak.'}
+            </div>
+          </div>
+
+          {/* Right: 12-Week Question Volume Bar Chart */}
+          <div className="flex-1 w-full">
+            <div className="text-[15px] font-semibold text-[#1E2B27] dark:text-white">
+              Questions per week
+            </div>
+
+            <div className="relative mt-4 h-36 flex items-end gap-2.5 pt-6 pb-1 border-b border-[#E3E8E5] dark:border-slate-800">
+              {/* Dashed Weekly Target Line */}
+              <div 
+                className="absolute left-0 right-0 border-t border-dashed border-[#8A9690] pointer-events-none"
+                style={{ bottom: `${Math.min((280 / maxWeeklyTotal) * 100, 95)}%` }}
+              />
+
+              {/* 12 Weekly Bars */}
+              {weeklyTotals.map((w, i) => {
+                const heightPercent = w.count > 0 
+                  ? Math.max(8, (w.count / maxWeeklyTotal) * 100) 
+                  : 4
+                const isCurrentWeek = i === weeklyTotals.length - 1
+
+                return (
+                  <div
+                    key={i}
+                    className="flex-1 flex flex-col items-center group relative h-full justify-end"
+                  >
+                    <div
+                      className={`w-full rounded-md transition-all ${
+                        isCurrentWeek && w.count > 0
+                          ? 'bg-[#7FD1AE]'
+                          : w.count > 0
+                          ? 'bg-[#0B7A5A]'
+                          : 'bg-[#E3E8E5] dark:bg-slate-800'
+                      }`}
+                      style={{ height: `${heightPercent}%` }}
+                      title={`Week ${w.weekNum}: ${w.count} Qs`}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-2.5 flex justify-between text-[13px] text-[#4F5C57] dark:text-slate-400">
+              <span>12 weeks ago</span>
+              <span className="hidden sm:inline">Dashed line is your weekly goal, 280</span>
+              <span>This week</span>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

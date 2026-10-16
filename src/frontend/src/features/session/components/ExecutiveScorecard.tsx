@@ -1,6 +1,4 @@
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
-import { Check, AlertTriangle, Clock, Trophy, Award, Sparkles } from 'lucide-react'
+import { Check, AlertTriangle, Sparkles, Clock, Target } from 'lucide-react'
 
 interface ExecutiveScorecardProps {
   accuracyPercentage: number;
@@ -30,131 +28,107 @@ export function ExecutiveScorecard({
   const isPassing = accuracyPercentage >= passingThreshold
   const isExcellent = accuracyPercentage >= excellenceThreshold
   const isOnPace = averageSecondsPerQuestion <= targetSeconds
-  const incorrectCount = answeredCount - correctCount
+  const diffSeconds = averageSecondsPerQuestion - targetSeconds
+
+  const formatTotalTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}m ${secs}s`
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-      {/* Card 1: Score & Mastery */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden flex flex-col justify-between">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardDescription className="text-xs uppercase font-semibold tracking-wider text-slate-500">
+    <div className="w-full bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 rounded-[28px] p-6 sm:p-8 shadow-[0_1px_3px_rgba(30,43,39,0.06)]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 divide-y md:divide-y-0 md:divide-x divide-[#E3E8E5] dark:divide-slate-800">
+        {/* Floating Stat 1: Block Accuracy */}
+        <div className="flex flex-col justify-between pt-0 md:pt-0">
+          <div>
+            <div className="text-[12px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
               Block Accuracy
-            </CardDescription>
-            <div className={`p-2 rounded-xl ${isPassing ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'}`}>
-              {isExcellent ? <Trophy className="w-5 h-5" /> : <Award className="w-5 h-5" />}
+            </div>
+            <div className="mt-2 flex items-baseline gap-2.5">
+              <span className="font-heading font-medium text-4xl sm:text-5xl text-[#1E2B27] dark:text-white tracking-tight">
+                {accuracyPercentage.toFixed(1)}%
+              </span>
+              <span className="text-[14px] font-medium text-[#4F5C57] dark:text-slate-400">
+                ({correctCount} / {answeredCount || totalQuestions})
+              </span>
             </div>
           </div>
-          <div className="flex items-baseline space-x-2 pt-2">
-            <span className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              {accuracyPercentage.toFixed(1)}%
-            </span>
-            <span className="text-sm font-medium text-slate-500">
-              ({correctCount} / {answeredCount || totalQuestions} correct)
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-2">
-          <div className="flex items-center space-x-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+
+          <div className="mt-4 flex items-center gap-2">
             {isExcellent ? (
-              <Badge className="bg-emerald-600 text-white border-none text-xs gap-1">
-                <Sparkles className="w-3 h-3" /> High-Yield Mastery (≥{excellenceThreshold}%)
-              </Badge>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 text-xs font-semibold">
+                <Sparkles className="w-3.5 h-3.5" /> High-Yield Mastery (≥{excellenceThreshold}%)
+              </span>
             ) : isPassing ? (
-              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 text-xs gap-1">
-                <Check className="w-3 h-3" /> Passing Standard (≥{passingThreshold}%)
-              </Badge>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 text-xs font-semibold">
+                <Check className="w-3.5 h-3.5" /> Passing Standard (≥{passingThreshold}%)
+              </span>
             ) : (
-              <Badge className="bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-300 text-xs gap-1">
-                <AlertTriangle className="w-3 h-3" /> Needs Review (&lt;{passingThreshold}%)
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 2: Time & Pacing Analytics */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden flex flex-col justify-between">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardDescription className="text-xs uppercase font-semibold tracking-wider text-slate-500">
-              Pacing Analytics
-            </CardDescription>
-            <div className={`p-2 rounded-xl ${isOnPace ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'}`}>
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="flex items-baseline space-x-2 pt-2">
-            <span className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              {averageSecondsPerQuestion}s
-            </span>
-            <span className="text-sm font-medium text-slate-500">
-              / question avg
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-2">
-          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80">
-            <span className="text-slate-500">
-              Total: <strong className="text-slate-700 dark:text-slate-300">{Math.floor(totalTimeSeconds / 60)}m {totalTimeSeconds % 60}s</strong>
-            </span>
-            {isOnPace ? (
-              <Badge variant="outline" className="border-emerald-300 text-emerald-700 dark:text-emerald-400 dark:border-emerald-800">
-                Target Pace (≤{targetSeconds}s)
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-400 dark:border-amber-800">
-                +{averageSecondsPerQuestion - targetSeconds}s Over Target ({targetSeconds}s)
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 3: Block Breakdown Distribution */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden flex flex-col justify-between">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardDescription className="text-xs uppercase font-semibold tracking-wider text-slate-500">
-              Performance Spread
-            </CardDescription>
-            <span className="text-xs font-semibold text-slate-400">
-              {totalQuestions} Questions
-            </span>
-          </div>
-          <div className="pt-3">
-            <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
-              <div
-                style={{ width: `${totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0}%` }}
-                className="bg-emerald-500 h-full transition-all"
-                title={`Correct: ${correctCount}`}
-              />
-              <div
-                style={{ width: `${totalQuestions > 0 ? (incorrectCount / totalQuestions) * 100 : 0}%` }}
-                className="bg-rose-500 h-full transition-all"
-                title={`Incorrect: ${incorrectCount}`}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-2">
-          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80">
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-              <span className="text-slate-600 dark:text-slate-400 font-medium">{correctCount} Correct</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
-              <span className="text-slate-600 dark:text-slate-400 font-medium">{incorrectCount} Incorrect</span>
-            </div>
-            {fastestSeconds > 0 && (
-              <span className="text-slate-400 text-[11px]">
-                Fastest: {fastestSeconds}s
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FCEDE8] dark:bg-rose-950/70 text-[#8A2F16] dark:text-rose-300 text-xs font-semibold">
+                <AlertTriangle className="w-3.5 h-3.5" /> Needs Review (&lt;{passingThreshold}%)
               </span>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Floating Stat 2: Pacing Analytics */}
+        <div className="flex flex-col justify-between pt-6 md:pt-0 md:pl-8">
+          <div>
+            <div className="text-[12px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
+              Pacing Analytics
+            </div>
+            <div className="mt-2 flex items-baseline gap-2.5">
+              <span className="font-heading font-medium text-4xl sm:text-5xl text-[#1E2B27] dark:text-white tracking-tight">
+                {averageSecondsPerQuestion}s
+              </span>
+              <span className="text-[14px] font-medium text-[#4F5C57] dark:text-slate-400">
+                / question avg
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-2">
+            {isOnPace ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 text-xs font-semibold">
+                <Clock className="w-3.5 h-3.5" /> On Target Pace (≤{targetSeconds}s)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-semibold">
+                <Clock className="w-3.5 h-3.5" /> +{diffSeconds}s over target ({targetSeconds}s)
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Floating Stat 3: Session Duration & Speed */}
+        <div className="flex flex-col justify-between pt-6 md:pt-0 md:pl-8">
+          <div>
+            <div className="text-[12px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
+              Total Elapsed Time
+            </div>
+            <div className="mt-2 flex items-baseline gap-2.5">
+              <span className="font-heading font-medium text-4xl sm:text-5xl text-[#1E2B27] dark:text-white tracking-tight">
+                {formatTotalTime(totalTimeSeconds)}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-2">
+            {fastestSeconds > 0 ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EDF0EE] dark:bg-slate-800 text-[#3E4A45] dark:text-slate-300 text-xs font-medium">
+                <Target className="w-3.5 h-3.5 text-[#0B7A5A] dark:text-emerald-400" />
+                Fastest response: {fastestSeconds}s
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EDF0EE] dark:bg-slate-800 text-[#3E4A45] dark:text-slate-300 text-xs font-medium">
+                {totalQuestions} questions completed
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
+

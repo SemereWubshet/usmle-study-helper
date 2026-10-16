@@ -1,5 +1,3 @@
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Clock } from 'lucide-react'
 import { QuestionExplanationCard } from './QuestionExplanationCard'
 import type { QuestionExportData } from '@/utils/promptTemplates'
@@ -54,96 +52,114 @@ export function ReviewQuestionDetail({
   const explanation = question?.explanation || attempt?.explanation
 
   return (
-    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
-      <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <Badge className="px-2.5 py-1 text-xs bg-slate-900 text-white dark:bg-white dark:text-slate-900">
-              Question {questionIndex + 1} of {totalQuestions}
-            </Badge>
-            {question?.subject && (
-              <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 text-xs">
-                {question.subject}
-              </Badge>
-            )}
-            {attempt && (
-              <Badge className={`text-xs ${attempt.isCorrect ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'}`}>
-                {attempt.isCorrect ? 'Correct Attempt' : 'Missed Question'}
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-3">
-            {attempt && (
-              <div className="flex items-center space-x-1.5 text-xs text-slate-500">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Time: <strong className="text-slate-700 dark:text-slate-300">{attempt.timeSpent}s</strong></span>
-              </div>
-            )}
-
-
-          </div>
+    <div className="w-full bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 shadow-[0_1px_3px_rgba(30,43,39,0.06)] rounded-[28px] p-6 sm:p-10 space-y-7">
+      {/* Top Meta Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E3E8E5] dark:border-slate-800 pb-5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#1E2B27] text-white dark:bg-white dark:text-[#1E2B27]">
+            Question {questionIndex + 1} of {totalQuestions}
+          </span>
+          {question?.subject && (
+            <span className="px-3.5 py-1 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 text-[13px] font-semibold">
+              {question.subject}
+            </span>
+          )}
+          {attempt && (
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                attempt.isCorrect
+                  ? 'bg-[#E3F2EA] text-[#0B5F46] dark:bg-emerald-950/80 dark:text-emerald-300'
+                  : 'bg-[#FCEDE8] text-[#8A2F16] dark:bg-rose-950/80 dark:text-rose-300'
+              }`}
+            >
+              {attempt.isCorrect ? 'Correct Attempt' : 'Missed Question'}
+            </span>
+          )}
         </div>
 
-        <CardTitle className="text-base font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-4">
-          {currentQuestionText}
-        </CardTitle>
-      </CardHeader>
+        {attempt && (
+          <div className="flex items-center gap-1.5 text-xs text-[#4F5C57] dark:text-slate-400">
+            <Clock className="w-3.5 h-3.5 text-[#3E4A45] dark:text-slate-400" />
+            <span>Time spent: <strong className="text-[#1E2B27] dark:text-slate-200 font-semibold">{attempt.timeSpent}s</strong></span>
+          </div>
+        )}
+      </div>
 
-      <CardContent className="space-y-3 pt-4">
+      {/* Vignette in Fraunces editorial serif */}
+      <p className="font-heading font-normal text-lg sm:text-[20px] leading-[1.75] text-[#1E2B27] dark:text-slate-100 select-text">
+        {currentQuestionText}
+      </p>
+
+      {/* Options List with Soft Pill Badges */}
+      <div className="space-y-3">
         {rawOptions.map((optText: string, optIdx: number) => {
           const wasChosen = attempt?.selectedOption === optIdx
           const wasCorrect = attempt?.correctOption === optIdx
 
-          let optStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300'
+          let buttonStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900/40 text-slate-400 dark:text-slate-500 opacity-60'
+          let badgeStyle = 'bg-[#EDF0EE] dark:bg-slate-800 text-[#1E2B27] dark:text-white'
+          let statusBadge = null
+
           if (wasCorrect) {
-            optStyle = 'border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200 ring-1 ring-emerald-500'
+            buttonStyle = 'border-2 border-[#0B7A5A] bg-[#E3F2EA] dark:bg-emerald-950/60 text-[#0B5F46] dark:text-emerald-200 font-medium'
+            badgeStyle = 'bg-white dark:bg-slate-900 text-[#0B5F46] dark:text-emerald-300 shadow-2xs'
+            statusBadge = (
+              <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0B5F46] dark:text-emerald-300 shrink-0">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12l5 5 9-10" />
+                </svg>
+                Correct answer
+              </span>
+            )
           } else if (wasChosen && !wasCorrect) {
-            optStyle = 'border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-950/40 dark:text-rose-200 ring-1 ring-rose-500'
+            buttonStyle = 'border-2 border-[#C9573A] bg-[#FCEDE8] dark:bg-rose-950/40 text-[#8A2F16] dark:text-rose-200 font-medium'
+            badgeStyle = 'bg-white dark:bg-slate-900 text-[#8A2F16] dark:text-rose-300 shadow-2xs'
+            statusBadge = (
+              <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#8A2F16] dark:text-rose-300 shrink-0">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+                Your answer
+              </span>
+            )
           }
 
           return (
             <div
               key={optIdx}
-              className={`p-3.5 rounded-xl border flex items-start space-x-3 text-sm transition-all ${optStyle}`}
+              className={`w-full text-left p-3.5 sm:p-4 rounded-[18px] transition-all flex items-center justify-between gap-3.5 min-h-[58px] ${buttonStyle}`}
             >
-              <span className="font-semibold text-xs tracking-wider uppercase mt-0.5 opacity-70">
-                {String.fromCharCode(65 + optIdx)}.
-              </span>
-              <div className="flex-1 select-text">
-                <span>{optText}</span>
+              <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px] shrink-0 select-none ${badgeStyle}`}>
+                  {String.fromCharCode(65 + optIdx)}
+                </span>
+                <span className="text-[16px] leading-relaxed select-text truncate">
+                  {optText}
+                </span>
               </div>
-              {wasCorrect && (
-                <Badge className="bg-emerald-600 text-white border-none text-[10px] uppercase tracking-wider ml-2">
-                  Correct Answer
-                </Badge>
-              )}
-              {wasChosen && !wasCorrect && (
-                <Badge className="bg-rose-600 text-white border-none text-[10px] uppercase tracking-wider ml-2">
-                  Your Choice
-                </Badge>
-              )}
+              {statusBadge}
             </div>
           )
         })}
+      </div>
 
-        {/* Unified Explanation & AI Rationale Card for Review Mode */}
-        <div className="mt-6">
-          <QuestionExplanationCard
-            questionId={question?.id || attempt?.questionId || fallbackQuestionId || `rev-${questionIndex}`}
-            questionText={currentQuestionText}
-            options={rawOptions}
-            correctAnswerText={question?.correct_text || attempt?.correctText || rawOptions[attempt?.correctOption ?? 0] || ''}
-            correctOptionIndex={attempt?.correctOption ?? 0}
-            selectedOptionIndex={attempt?.selectedOption ?? null}
-            officialExplanation={explanation}
-            subject={question?.subject || attempt?.subject || undefined}
-            isCorrect={attempt?.isCorrect}
-            exportData={exportPromptData}
-            isReviewView={true}
-          />
-        </div>
-      </CardContent>
-    </Card>
+      {/* Unified Explanation & AI Rationale Card */}
+      <div className="mt-8 pt-4">
+        <QuestionExplanationCard
+          questionId={question?.id || attempt?.questionId || fallbackQuestionId || `rev-${questionIndex}`}
+          questionText={currentQuestionText}
+          options={rawOptions}
+          correctAnswerText={question?.correct_text || attempt?.correctText || rawOptions[attempt?.correctOption ?? 0] || ''}
+          correctOptionIndex={attempt?.correctOption ?? 0}
+          selectedOptionIndex={attempt?.selectedOption ?? null}
+          officialExplanation={explanation}
+          subject={question?.subject || attempt?.subject || undefined}
+          isCorrect={attempt?.isCorrect}
+          exportData={exportPromptData}
+          isReviewView={true}
+        />
+      </div>
+    </div>
   )
 }
+

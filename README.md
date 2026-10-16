@@ -36,6 +36,8 @@
   * **DR.KNOWS Biomedical Ontology:** Grounded in a high-yield pruned knowledge graph linking UMLS / SNOMED CT clinical concepts with precise medical relations (`causes`, `manifestation of`, `associated with`, `treats`).
   * **Interactive Context Halos:** Surrounding differential nodes that students can click to add as additional findings or explore connected pathologies.
 * **AI Clinical Explanations (On-Demand Rationale):** For questions lacking official answer breakdowns, students can generate structured, high-yield clinical rationales with distractor analyses powered by OpenRouter directly from their local engine.
+* **Custom Exam Presets & Configurable Target Pacing:** Create, name, and tune custom exam presets (such as USMLE Step 1 and Step 2 & 3 targets) with custom question counts, block limits, and question pacing targets (60s–90s/question) stored locally.
+* **Live Engine Preview & Sandbox:** An authentic, fully styled interactive review preview on the welcome screen allowing students to experience active sessions, question navigators, and reference panels before launching their desktop engine.
 * **Engine Version Intelligence:** An unobtrusive, non-blocking notification in the web app that notifies students when a newer local engine release is available on GitHub.
 
 ---

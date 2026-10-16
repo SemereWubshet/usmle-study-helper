@@ -203,13 +203,13 @@ export default function Session() {
   const showSidebar = (isReviewMode || examMode !== 'mock_exam') && activeSidePanel !== 'none'
 
   return (
-    <div className="h-full w-full overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row">
+    <div className="h-full w-full overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row bg-[#FAF9F6] dark:bg-slate-950">
       {/* Main scrolling stage */}
       <div 
         style={{ width: (showSidebar && isDesktop) ? `${100 - sidebarWidthPercent}%` : '100%' }}
-        className="w-full lg:h-full lg:overflow-y-auto pr-0 transition-[width] duration-75"
+        className="w-full lg:h-full lg:overflow-y-auto transition-[width] duration-200"
       >
-        <div className={`w-full py-2 px-3 sm:px-6 flex flex-col space-y-6 animate-in fade-in duration-500 ${!showSidebar ? 'max-w-5xl mx-auto' : ''}`}>
+        <div className={`w-full py-6 px-4 sm:px-8 flex flex-col space-y-6 animate-in fade-in duration-300 ${!showSidebar ? 'max-w-6xl mx-auto' : 'max-w-4xl mx-auto lg:max-w-none'}`}>
           <SessionHeader
             isReviewMode={isReviewMode}
             qbank={sessionData.qbank}

@@ -1,6 +1,3 @@
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { QuestionExplanationCard } from './QuestionExplanationCard'
 import type { QuestionExportData } from '@/utils/promptTemplates'
 import type { Question, AttemptOut } from '@/api'
@@ -51,40 +48,60 @@ export function ActiveQuestionCard({
 
   return (
     <>
-      <Card className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
-        <CardHeader className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            {question?.subject ? (
-              <Badge className="w-fit bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">
-                {question.subject}
-              </Badge>
-            ) : <div />}
+      <div className="w-full bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 shadow-[0_1px_3px_rgba(30,43,39,0.06)] rounded-[28px] p-6 sm:p-10 space-y-7">
+        {/* Subject Tag */}
+        <div>
+          {question?.subject && (
+            <span className="inline-block px-3.5 py-1.5 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 text-[13px] font-semibold">
+              {question.subject}
+            </span>
+          )}
 
-
-          </div>
-
-          <CardTitle className="text-lg font-normal leading-relaxed text-slate-900 dark:text-slate-100 pt-2">
+          {/* Vignette Text in Fraunces editorial serif */}
+          <p className="mt-4 font-heading font-normal text-lg sm:text-[20px] leading-[1.75] text-[#1E2B27] dark:text-slate-100 select-text">
             {question?.question}
-          </CardTitle>
-        </CardHeader>
+          </p>
+        </div>
 
-        <CardContent className="space-y-3">
+        {/* Options list */}
+        <div className="space-y-3">
           {options.map((optText: string, idx: number) => {
             const isSelected = selectedOption === idx
             const isStruck = struckOptions.includes(idx)
 
-            let buttonStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+            let buttonStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)]'
+            let badgeStyle = 'bg-[#EDF0EE] dark:bg-slate-800 text-[#1E2B27] dark:text-white'
+            let statusBadge = null
 
             if (attemptResult && examMode === 'tutor') {
               if (idx === attemptResult.correct_option) {
-                buttonStyle = 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 ring-1 ring-emerald-500'
+                buttonStyle = 'border-2 border-[#0B7A5A] bg-[#E3F2EA] dark:bg-emerald-950/60 text-[#0B5F46] dark:text-emerald-200 font-medium'
+                badgeStyle = 'bg-white dark:bg-slate-900 text-[#0B5F46] dark:text-emerald-300'
+                statusBadge = (
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0B5F46] dark:text-emerald-300 shrink-0">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12l5 5 9-10" />
+                    </svg>
+                    Correct answer
+                  </span>
+                )
               } else if (isSelected && !attemptResult.is_correct) {
-                buttonStyle = 'border-red-500 bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200 ring-1 ring-red-500'
+                buttonStyle = 'border-2 border-[#C9573A] bg-[#FCEDE8] dark:bg-rose-950/40 text-[#8A2F16] dark:text-rose-200 font-medium'
+                badgeStyle = 'bg-white dark:bg-slate-900 text-[#8A2F16] dark:text-rose-300'
+                statusBadge = (
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#8A2F16] dark:text-rose-300 shrink-0">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                    Your answer
+                  </span>
+                )
               } else {
-                buttonStyle = 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 text-slate-400 dark:text-slate-500 opacity-60'
+                buttonStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-950/40 text-slate-400 dark:text-slate-500 opacity-60'
               }
             } else if (isSelected) {
-              buttonStyle = 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-200 ring-1 ring-blue-500 font-medium'
+              buttonStyle = 'border-2 border-[#0B7A5A] bg-[#E3F2EA]/40 dark:bg-emerald-950/30 text-[#0B5F46] dark:text-emerald-300 font-medium'
+              badgeStyle = 'bg-[#0B7A5A] text-white'
             }
 
             return (
@@ -94,39 +111,56 @@ export function ActiveQuestionCard({
                 onClick={() => onSelectOption(idx)}
                 onContextMenu={(e) => onToggleStrike(e, idx)}
                 disabled={Boolean(attemptResult && examMode === 'tutor')}
-                className={`w-full text-left p-4 rounded-lg border transition-all flex items-start space-x-3 cursor-pointer ${buttonStyle} ${
-                  isStruck && !attemptResult ? 'line-through opacity-40 text-slate-400 dark:text-slate-600' : ''
+                className={`w-full text-left p-3.5 sm:p-4 rounded-[18px] transition-all flex items-center justify-between gap-3.5 cursor-pointer min-h-[58px] ${buttonStyle} ${
+                  isStruck && !attemptResult ? 'line-through opacity-40 text-slate-400' : ''
                 }`}
               >
-                <span className="font-semibold text-xs tracking-wider uppercase mt-0.5 opacity-70 select-none">
-                  {String.fromCharCode(65 + idx)}.
-                </span>
-                <span className="flex-1 text-sm leading-relaxed select-text">{optText}</span>
+                <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                  <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px] shrink-0 select-none shadow-2xs ${badgeStyle}`}>
+                    {String.fromCharCode(65 + idx)}
+                  </span>
+                  <span className="text-[16px] font-medium leading-relaxed select-text truncate">
+                    {optText}
+                  </span>
+                </div>
+                {statusBadge}
               </button>
             )
           })}
-        </CardContent>
+        </div>
 
-        <CardFooter className="flex justify-end border-t border-slate-100 dark:border-slate-800/80 pt-4">
+        {/* Footer Action Buttons */}
+        <div className="flex items-center justify-between border-t border-[#E3E8E5] dark:border-slate-800 pt-5 flex-wrap gap-4">
+          <span className="text-[13px] text-[#4F5C57] dark:text-slate-400">
+            Press Enter to continue
+          </span>
+
           {examMode === 'mock_exam' ? (
-            <Button
+            <button
               onClick={onSubmit}
               disabled={selectedOption === null || isSubmitting}
-              className="bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
+              className="min-h-[48px] px-7 rounded-full bg-[#0B7A5A] hover:bg-[#0B7A5A]/90 text-white font-semibold text-[15px] shadow-[0_8px_20px_rgba(11,122,90,0.2)] transition-all cursor-pointer disabled:opacity-40"
             >
-              {isSubmitting ? 'Saving...' : isLastQuestion ? 'Finish & Review Block →' : 'Next Question →'}
-            </Button>
+              {isSubmitting ? 'Saving...' : isLastQuestion ? 'Finish & review block →' : 'Next question →'}
+            </button>
           ) : !attemptResult ? (
-            <Button onClick={onSubmit} disabled={selectedOption === null || isSubmitting} className="bg-emerald-600 hover:bg-emerald-500 text-white">
-              {isSubmitting ? 'Checking...' : 'Submit Answer'}
-            </Button>
+            <button
+              onClick={onSubmit}
+              disabled={selectedOption === null || isSubmitting}
+              className="min-h-[48px] px-7 rounded-full bg-[#0B7A5A] hover:bg-[#0B7A5A]/90 text-white font-semibold text-[15px] shadow-[0_8px_20px_rgba(11,122,90,0.2)] transition-all cursor-pointer disabled:opacity-40"
+            >
+              {isSubmitting ? 'Checking...' : 'Submit answer'}
+            </button>
           ) : (
-            <Button onClick={onNext} className="bg-blue-600 hover:bg-blue-500 text-white">
-              {isLastQuestion ? 'Finish & Review Block →' : 'Next Question →'}
-            </Button>
+            <button
+              onClick={onNext}
+              className="min-h-[48px] px-7 rounded-full bg-[#0B7A5A] hover:bg-[#0B7A5A]/90 text-white font-semibold text-[15px] shadow-[0_8px_20px_rgba(11,122,90,0.2)] transition-all cursor-pointer"
+            >
+              {isLastQuestion ? 'Finish & review block →' : 'Next question →'}
+            </button>
           )}
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
 
       {/* Unified Explanation & AI Rationale Card when answered in tutor mode */}
       {attemptResult && examMode === 'tutor' && (

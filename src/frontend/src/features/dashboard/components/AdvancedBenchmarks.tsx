@@ -1,4 +1,4 @@
-import { SlidersHorizontal } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 
 interface AdvancedBenchmarksProps {
   showAdvanced: boolean;
@@ -26,88 +26,118 @@ export function AdvancedBenchmarks({
   setExamDurationMinutes,
 }: AdvancedBenchmarksProps) {
   return (
-    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+    <div className="pt-2">
       <button
         type="button"
         onClick={() => setShowAdvanced(!showAdvanced)}
-        className="flex items-center space-x-2 text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+        className="flex items-center gap-2.5 text-[15px] font-medium text-[#3E4A45] hover:text-[#1E2B27] dark:text-slate-300 dark:hover:text-white transition-colors cursor-pointer select-none"
       >
-        <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-        <span>{showAdvanced ? "Hide Pacing & Review Targets" : "Configure Pacing & Review Benchmarks"}</span>
+        <span>Advanced</span>
+        <ChevronDown 
+          className={`w-4 h-4 transition-transform duration-200 ${showAdvanced ? 'rotate-180 text-[#0B7A5A]' : 'text-[#3E4A45]'}`} 
+        />
       </button>
 
       {showAdvanced && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4 animate-in fade-in duration-300">
-          {/* Passing Threshold */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-500 font-medium">Passing</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">{passingThreshold}%</span>
+        <div className="mt-4 p-6 sm:p-7 bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 rounded-[24px] shadow-[0_1px_3px_rgba(30,43,39,0.06)] grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 animate-in fade-in duration-200">
+          {/* Passing score */}
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <label htmlFor="rPas" className="text-[15px] font-semibold text-[#1E2B27] dark:text-white">
+                Passing score
+              </label>
+              <span className="font-heading font-medium text-[22px] text-[#0B7A5A]">
+                {passingThreshold}%
+              </span>
             </div>
             <input
+              id="rPas"
               type="range"
               min={40}
               max={90}
               step={5}
               value={passingThreshold}
               onChange={(e) => setPassingThreshold(Number(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+              className="w-full h-2 accent-[#0B7A5A] cursor-pointer"
             />
-            <p className="text-[10px] text-slate-400">Pass cutoff for summary</p>
+            <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">
+              The cutoff shown on your summary.
+            </div>
           </div>
 
-          {/* Mastery Threshold */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-500 font-medium">Mastery</span>
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">{excellenceThreshold}%</span>
+          {/* Mastery goal */}
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <label htmlFor="rMas" className="text-[15px] font-semibold text-[#1E2B27] dark:text-white">
+                Mastery goal
+              </label>
+              <span className="font-heading font-medium text-[22px] text-[#4B3FD6]">
+                {excellenceThreshold}%
+              </span>
             </div>
             <input
+              id="rMas"
               type="range"
               min={60}
               max={100}
               step={5}
               value={excellenceThreshold}
               onChange={(e) => setExcellenceThreshold(Number(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+              className="w-full h-2 accent-[#4B3FD6] cursor-pointer"
             />
-            <p className="text-[10px] text-slate-400">Gold standard benchmark</p>
+            <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">
+              Your gold standard benchmark.
+            </div>
           </div>
 
-          {/* Target Pace */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-500 font-medium">Pace</span>
-              <span className="font-bold text-blue-600 dark:text-blue-400">{targetSeconds}s</span>
+          {/* Pace per question */}
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <label htmlFor="rPac" className="text-[15px] font-semibold text-[#1E2B27] dark:text-white">
+                Pace per question
+              </label>
+              <span className="font-heading font-medium text-[22px] text-[#2F6FEB]">
+                {targetSeconds}s
+              </span>
             </div>
             <input
+              id="rPac"
               type="range"
               min={30}
               max={180}
               step={5}
               value={targetSeconds}
               onChange={(e) => setTargetSeconds(Number(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+              className="w-full h-2 accent-[#2F6FEB] cursor-pointer"
             />
-            <p className="text-[10px] text-slate-400">{Math.floor(targetSeconds / 60)}m {targetSeconds % 60}s / Q</p>
+            <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">
+              About {Math.floor(targetSeconds / 60)} min {targetSeconds % 60 ? `${targetSeconds % 60} seconds` : ''} each.
+            </div>
           </div>
 
-          {/* Mock Exam Duration */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-500 font-medium">Exam Time</span>
-              <span className="font-bold text-indigo-600 dark:text-amber-400">{examDurationMinutes}m</span>
+          {/* Exam time */}
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <label htmlFor="rExa" className="text-[15px] font-semibold text-[#1E2B27] dark:text-white">
+                Exam time
+              </label>
+              <span className="font-heading font-medium text-[22px] text-[#E08A00]">
+                {examDurationMinutes} min
+              </span>
             </div>
             <input
+              id="rExa"
               type="range"
-              min={5}
-              max={120}
+              min={10}
+              max={180}
               step={5}
               value={examDurationMinutes}
               onChange={(e) => setExamDurationMinutes && setExamDurationMinutes(Number(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              className="w-full h-2 accent-[#E08A00] cursor-pointer"
             />
-            <p className="text-[10px] text-slate-400">Block countdown length</p>
+            <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">
+              How long the exam countdown runs.
+            </div>
           </div>
         </div>
       )}

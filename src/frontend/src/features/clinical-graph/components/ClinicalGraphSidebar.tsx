@@ -1,6 +1,6 @@
 import React from 'react';
-import { X, AlertCircle, ExternalLink, GitGraph } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { X, AlertCircle, ExternalLink } from 'lucide-react';
+import { MedGraphIcon } from '@/components/icons/MedGraphIcon';
 import { ClueChipBar } from './ClueChipBar';
 import { ClinicalGraphCanvas } from './ClinicalGraphCanvas';
 import { PathNarrativeList } from './PathNarrativeList';
@@ -36,49 +36,51 @@ export const ClinicalGraphSidebar: React.FC<ClinicalGraphSidebarProps> = ({
   onSelectTarget,
 }) => {
   return (
-    <div className="w-full h-full overflow-y-auto flex-shrink-0 bg-white dark:bg-slate-900 rounded-2xl lg:rounded-none pb-12 lg:pb-6 animate-in fade-in duration-300">
-      <div className="p-4 space-y-4">
-        {/* Sidebar Header with DR.KNOWS citation badge */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center">
-              <GitGraph className="w-4 h-4" />
-            </div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+    <aside className="w-full h-full overflow-y-auto flex-shrink-0 bg-[#EFF4F0] dark:bg-slate-900 rounded-[28px] p-5 sm:p-6 pb-12 lg:pb-6 animate-in fade-in duration-300 border border-[#E3E8E5]/70 dark:border-slate-800 shadow-[0_4px_20px_rgba(30,43,39,0.04)]">
+      <div className="space-y-4">
+        {/* Top Header: Fraunces Title, DR.KNOWS badge, Subtitle, and Close Button */}
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="w-10 h-10 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B7A5A] dark:text-emerald-300 inline-flex items-center justify-center">
+                <MedGraphIcon size={20} />
+              </span>
+              <span className="font-heading font-medium text-2xl text-[#1E2B27] dark:text-white">
                 MedGraph
-              </h3>
+              </span>
               <a
                 href="https://github.com/drknows/drknows"
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Knowledge Graph sourced from DR.KNOWS biomedical ontology"
-                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors select-none"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-slate-800 text-[#0B5F46] dark:text-emerald-300 border border-[#E3E8E5] dark:border-slate-700 tracking-wider hover:text-emerald-600 transition-colors uppercase select-none"
               >
                 <span>DR.KNOWS</span>
                 <ExternalLink className="w-2.5 h-2.5 opacity-60" />
               </a>
             </div>
-          </div>
 
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onClose}
-            className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
-            title="Close MedGraph"
-          >
-            <X className="w-4 h-4" />
-          </Button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close panel"
+              className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-[#E3E8E5] dark:border-slate-700 text-[#3E4A45] dark:text-slate-300 hover:text-[#1E2B27] hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="mt-1 text-[12px] text-[#4F5C57] dark:text-slate-400 pl-[50px]">
+            Knowledge Graph sourced from DR.KNOWS biomedical ontology
+          </p>
         </div>
 
         {/* Target / Differential Switcher */}
         {options.length > 0 && (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <div className="flex flex-col gap-2 pt-1">
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-[#4F5C57] dark:text-slate-400">
               Select Target
             </span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {options.map((opt) => {
                 const isSelected = opt === currentTarget;
                 return (
@@ -86,10 +88,10 @@ export const ClinicalGraphSidebar: React.FC<ClinicalGraphSidebarProps> = ({
                     key={opt}
                     type="button"
                     onClick={() => onSelectTarget(opt)}
-                    className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-all cursor-pointer ${
+                    className={`min-h-[38px] px-4 rounded-full text-[13px] transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs font-semibold'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                        ? 'bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 font-semibold border border-[#0B7A5A] shadow-xs'
+                        : 'bg-white dark:bg-slate-800 text-[#1E2B27] dark:text-slate-300 font-medium border border-[#E3E8E5] dark:border-slate-700 hover:border-[#0B7A5A]/50'
                     }`}
                   >
                     {opt}
@@ -113,7 +115,7 @@ export const ClinicalGraphSidebar: React.FC<ClinicalGraphSidebarProps> = ({
         {/* Status / Loading / Error Notice */}
         {isLoadingGraph && (
           <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800 animate-pulse">
-            <GitGraph className="w-4 h-4 animate-spin shrink-0" />
+            <MedGraphIcon size={16} className="animate-spin shrink-0" />
             <span>Connecting path from clues to <strong>{currentTarget}</strong> via DR.KNOWS graph...</span>
           </div>
         )}
@@ -139,7 +141,7 @@ export const ClinicalGraphSidebar: React.FC<ClinicalGraphSidebarProps> = ({
           </div>
         ) : (
           <div className="h-[280px] rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center p-6 text-center text-slate-400 gap-3">
-            <GitGraph className="w-12 h-12 text-slate-300 dark:text-slate-700 animate-pulse" />
+            <MedGraphIcon size={48} className="text-slate-300 dark:text-slate-700 animate-pulse" />
             <div className="space-y-1">
               <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
                 Ready to Map Pathophysiology
@@ -151,6 +153,6 @@ export const ClinicalGraphSidebar: React.FC<ClinicalGraphSidebarProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </aside>
   );
 };

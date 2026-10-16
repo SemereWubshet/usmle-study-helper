@@ -13,7 +13,7 @@ interface SubjectSelectorProps {
 }
 
 export function SubjectSelector({
-  availableSubjects,
+  availableSubjects: _availableSubjects,
   isLoadingSubjects,
   selectedSubjects,
   subjectSearch,
@@ -24,77 +24,83 @@ export function SubjectSelector({
   totalAvailableInSelection,
 }: SubjectSelectorProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-xs font-bold">2</span>
-          <label className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-            Select Subjects / Systems
-          </label>
+    <section className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+        <div>
+          <div className="text-[12px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
+            Step 2
+          </div>
+          <h2 className="text-xl font-semibold text-[#1E2B27] dark:text-white mt-1">
+            What do you want to cover?
+          </h2>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={onSelectAll}
-            className={`text-xs px-2.5 py-1 rounded-lg transition-all ${
-              selectedSubjects.includes('All Subjects')
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 font-semibold'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            All Subjects
-          </button>
-          <span className="text-xs text-slate-400">
-            • {totalAvailableInSelection.toLocaleString()} Qs available
-          </span>
+        <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">
+          <span className="font-semibold text-[#0B7A5A] dark:text-emerald-400">{totalAvailableInSelection.toLocaleString()}</span> questions available
         </div>
       </div>
 
-      {/* Search Bar for Subjects if available */}
-      {availableSubjects.length > 6 && (
+      {/* Rounded Pill Search Bar */}
+      <div className="relative">
         <input
           type="text"
-          placeholder="Filter subjects (e.g. Cardiology, Pathology)..."
+          placeholder="Search subjects..."
           value={subjectSearch}
           onChange={(e) => onSubjectSearchChange(e.target.value)}
-          className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+          className="w-full h-12 pl-5 pr-11 text-sm rounded-full bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 text-[#1E2B27] dark:text-white placeholder:text-[#4F5C57]/60 focus:outline-none focus:border-[#0B7A5A] focus:ring-1 focus:ring-[#0B7A5A] transition-all shadow-[0_1px_3px_rgba(30,43,39,0.04)]"
         />
-      )}
+        {subjectSearch && (
+          <button
+            type="button"
+            onClick={() => onSubjectSearchChange('')}
+            aria-label="Clear search"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#EDF0EE] dark:bg-slate-800 text-[#4F5C57] dark:text-slate-400 hover:text-[#1E2B27] dark:hover:text-white flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+          >
+            ×
+          </button>
+        )}
+      </div>
 
-      {/* Subject Chips Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
+      {/* Subject Pills Grid / Flow */}
+      <div className="flex flex-wrap gap-2.5 min-h-[140px] max-h-64 overflow-y-auto pr-1 py-1 content-start">
+        {/* All Subjects Pill Button */}
+        <button
+          type="button"
+          onClick={onSelectAll}
+          className={`min-h-[42px] px-5 rounded-full text-[14px] font-medium transition-all cursor-pointer select-none flex items-center ${
+            selectedSubjects.includes('All Subjects')
+              ? 'border border-[#0B7A5A] bg-[#E3F2EA] text-[#0B5F46] font-semibold dark:bg-emerald-950/70 dark:text-emerald-300'
+              : 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)]'
+          }`}
+        >
+          All subjects
+        </button>
+
         {isLoadingSubjects ? (
           Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800/50 animate-pulse" />
+            <div key={i} className="h-10 w-28 rounded-full bg-slate-200/60 dark:bg-slate-800/50 animate-pulse" />
           ))
         ) : filteredSubjects.length === 0 ? (
-          <div className="col-span-full py-4 text-center text-xs text-slate-400">
-            No subjects match your filter.
+          <div className="w-full py-8 text-center text-sm text-[#4F5C57] dark:text-slate-400">
+            No subjects matching &ldquo;{subjectSearch}&rdquo; found.
           </div>
         ) : (
           filteredSubjects.map((sub: SubjectItem) => {
-            const isExplicit = selectedSubjects.includes(sub.subject)
+            const isSelected = selectedSubjects.includes(sub.subject)
 
             return (
               <button
                 key={sub.subject}
                 type="button"
                 onClick={() => onToggleSubject(sub.subject)}
-                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-xs transition-all cursor-pointer text-left select-none ${
-                  isExplicit
-                    ? 'border-emerald-500 bg-emerald-500 text-white font-medium shadow-xs'
-                    : selectedSubjects.includes('All Subjects')
-                    ? 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-800 dark:text-slate-200 hover:border-emerald-400'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                className={`min-h-[42px] px-4.5 rounded-full text-[14px] transition-all cursor-pointer select-none flex items-center gap-2 ${
+                  isSelected
+                    ? 'border border-[#0B7A5A] bg-[#E3F2EA] text-[#0B5F46] font-semibold dark:bg-emerald-950/70 dark:text-emerald-300'
+                    : 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)]'
                 }`}
               >
-                <span className="truncate pr-2">{sub.subject}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
-                  isExplicit
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                }`}>
+                <span>{sub.subject}</span>
+                <span className="text-[12px] text-[#4F5C57] dark:text-slate-400 font-normal">
                   {sub.count}
                 </span>
               </button>
@@ -102,7 +108,7 @@ export function SubjectSelector({
           })
         )}
       </div>
-    </div>
+    </section>
   )
 }
 

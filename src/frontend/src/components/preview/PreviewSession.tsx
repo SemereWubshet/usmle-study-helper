@@ -1,195 +1,189 @@
 import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { 
-  Clock, 
-  Search, 
-  PanelRightClose, 
-  PanelRightOpen, 
-  X
-} from 'lucide-react'
-import type { MedSearchProvider } from '@/api'
-import { ProviderTabs } from '@/features/session/components/medsearch/ProviderTabs'
-import { getProviderConfig } from '@/features/session/components/medsearch/types'
+import { Clock, Search, X, Check } from 'lucide-react'
+import { MedGraphIcon } from '@/components/icons/MedGraphIcon'
 
 interface PreviewSessionProps {
   isSidebarOpen?: boolean
   onToggleSidebar?: () => void
 }
 
-export function PreviewSession({ 
-  isSidebarOpen: controlledSidebarOpen, 
-  onToggleSidebar: controlledToggleSidebar 
-}: PreviewSessionProps) {
-  const [internalSidebarOpen, setInternalSidebarOpen] = useState(false)
-  const isSidebarOpen = controlledSidebarOpen !== undefined ? controlledSidebarOpen : internalSidebarOpen
-  const toggleSidebar = controlledToggleSidebar || (() => setInternalSidebarOpen(prev => !prev))
-  const [sidebarSearchInput, setSidebarSearchInput] = useState('')
+const SAMPLE_OPTIONS = [
+  'Budd-Chiari syndrome',
+  'Viral hepatitis',
+  'Nonalcoholic fatty liver disease',
+  'Drug-induced hepatitis'
+]
 
-  const [previewProvider, setPreviewProvider] = useState<MedSearchProvider>('medlineplus')
-  const providerConfig = getProviderConfig(previewProvider)
+export function PreviewSession({ 
+  isSidebarOpen: _controlledSidebarOpen, 
+  onToggleSidebar: _controlledToggleSidebar 
+}: PreviewSessionProps) {
+  // Interactive question states
+  const [selectedOption, setSelectedOption] = useState<number | null>(null)
+  const [struckOptions, setStruckOptions] = useState<number[]>([])
+  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState<boolean>(false)
+
+  const handleSelectOption = (idx: number) => {
+    setSelectedOption(idx)
+    setIsAnswerSubmitted(true)
+  }
+
+  const handleToggleStrike = (e: React.MouseEvent, idx: number) => {
+    e.preventDefault()
+    setStruckOptions(prev => 
+      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+    )
+  }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4">
-      {/* Question Stage Column */}
-      <div className={`space-y-4 flex-1 transition-all duration-300 min-w-0`}>
-        {/* Active Session Header matching SessionHeader.tsx */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div className="flex items-center space-x-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Question 14 of 40
-            </span>
-            <div className="flex items-center space-x-2">
-              {/* Exact Timer Badge from SessionHeader.tsx */}
-              <div className="flex items-center space-x-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-lg shadow-2xs">
-                <Clock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                <span>45s</span>
-              </div>
+    <div className="space-y-5">
+      {/* 1. Session Header Replica */}
+      <div className="flex flex-col gap-3 pb-3 border-b border-[#E3E8E5] dark:border-slate-800">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-[11px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
+              USMLE Step 1 • Interactive Practice Demo
+            </div>
+            <div className="mt-1 flex items-center gap-3 flex-wrap">
+              <h2 className="font-heading font-medium text-2xl sm:text-[26px] text-[#1E2B27] dark:text-white leading-[1.1]">
+                Question 14 of 40
+              </h2>
+
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EDF0EE] dark:bg-slate-800 text-[12px] font-semibold text-[#3E4A45] dark:text-slate-300">
+                <Clock className="w-3.5 h-3.5 text-[#3E4A45] dark:text-slate-400" />
+                <span>45s elapsed</span>
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-
-            {/* MedSearch Toggle Button matching SessionHeader.tsx */}
-            <Button
-              size="sm"
-              variant={isSidebarOpen ? "secondary" : "outline"}
-              onClick={toggleSidebar}
-              className="h-7 px-2 text-xs font-medium rounded-lg gap-1 cursor-pointer border-slate-200 dark:border-slate-800"
+          {/* Right Panel Toggle Pill Group (Visual only) */}
+          <div className="inline-flex gap-1 p-1 bg-[#EDF0EE] dark:bg-slate-800/80 rounded-full border border-[#E3E8E5]/70 dark:border-slate-800">
+            <span
+              className="min-h-[34px] px-3.5 rounded-full text-[13px] inline-flex items-center gap-1.5 bg-transparent text-[#3E4A45] dark:text-slate-400 font-medium select-none cursor-default"
+              title="MedSearch is available during active sessions"
             >
-              {isSidebarOpen ? (
-                <PanelRightClose className="w-3 h-3 text-slate-500" />
-              ) : (
-                <PanelRightOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-              )}
-              <span>{isSidebarOpen ? "MedSearch" : "MedSearch"}</span>
-            </Button>
-          </div>
-        </div>
+              <Search className="w-3.5 h-3.5 shrink-0" />
+              <span>MedSearch</span>
+            </span>
 
-        {/* Question Vignette */}
-        <div className="space-y-1.5">
-          <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 text-[11px]">
-            Pathology
-          </Badge>
-          <p className="text-sm leading-relaxed text-slate-800 dark:text-slate-200 select-text">
-            A 40-year-old woman presents with abdominal pain and yellow discoloration of the skin for the past 4 days. She says that her symptoms onset gradually and progressively worsened. Past medical history is unremarkable. She has been taking oral contraceptive pills for 4 years. Her vitals include: pulse 102/min, respiratory rate 15/min, temperature 37.5°C (99.5°F), and blood pressure 116/76 mm Hg. Physical examination reveals abdominal pain on palpation, hepatomegaly 4 cm below the right costal margin, and shifting abdominal dullness with a positive fluid wave. Hepatitis viral panel is ordered which shows: Anti-HAV IgM Negative HBsAg Negative Anti-HBs Negative IgM anti-HBc Negative Anti-HCV Negative Anti-HDV Negative Anti-HEV Negative An abdominal ultrasound reveals evidence of hepatic vein thrombosis. A liver biopsy is performed which shows congestion and necrosis in the central zones. Which of the following is the most likely diagnosis in this patient?
-          </p>
-        </div>
-
-        {/* Options */}
-        <div className="space-y-2 pt-1 select-text">
-          <div className="p-2.5 rounded-xl border border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 flex items-start space-x-2.5 text-xs ring-1 ring-emerald-500">
-            <span className="font-bold">A.</span>
-            <span className="flex-1 font-medium">Budd-Chiari syndrome</span>
-            <Badge className="bg-emerald-600 text-white text-[9px] py-0 px-1.5 h-4">Correct</Badge>
-          </div>
-
-          <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 flex items-start space-x-2.5 text-xs">
-            <span className="font-bold">B.</span>
-            <span className="flex-1">Viral hepatitis</span>
-          </div>
-
-          <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 flex items-start space-x-2.5 text-xs">
-            <span className="font-bold">C.</span>
-            <span className="flex-1">Nonalcoholic fatty liver disease</span>
-          </div>
-
-          <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 flex items-start space-x-2.5 text-xs">
-            <span className="font-bold">D.</span>
-            <span className="flex-1">Drug-induced hepatitis</span>
+            <span
+              className="min-h-[34px] px-3.5 rounded-full text-[13px] inline-flex items-center gap-1.5 bg-transparent text-[#3E4A45] dark:text-slate-400 font-medium select-none cursor-default"
+              title="MedGraph is available during active sessions"
+            >
+              <MedGraphIcon size={15} className="shrink-0" />
+              <span>MedGraph</span>
+            </span>
           </div>
         </div>
       </div>
 
-      {/* MedSearch Sidebar Simulation matching EncyclopediaSidebar.tsx */}
-      {isSidebarOpen && (
-        <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 pt-3 lg:pt-0 lg:pl-3 animate-in fade-in duration-200">
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
-            <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-3 p-3 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
-                    <Search className="w-4 h-4" />
-                  </div>
-                  <div className="flex items-center space-x-1.5">
-                    <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
-                      MedSearch
-                    </CardTitle>
-                    <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${providerConfig.badgeStyle}`}>
-                      {providerConfig.icon} {providerConfig.shortLabel}
-                    </span>
-                  </div>
-                </div>
+      {/* 2. Main Question Card (Clean full-width) */}
+      <div className="w-full bg-[#FAF9F6] dark:bg-slate-900/60 border border-[#E3E8E5] dark:border-slate-800 rounded-[24px] p-5 sm:p-7 space-y-5">
+        {/* Subject Tag */}
+        <div>
+          <span className="inline-block px-3 py-1 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 text-[12px] font-semibold">
+            Pathology • Gastrointestinal &amp; Hepatic
+          </span>
 
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={toggleSidebar}
-                  className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                  title="Hide MedSearch"
-                >
-                  <PanelRightClose className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-
-              {/* Provider Pill Switcher */}
-              <ProviderTabs
-                selectedProvider={previewProvider}
-                onSelectProvider={setPreviewProvider}
-              />
-
-              {/* Interactive Search Bar (Visual Only) */}
-              <form onSubmit={(e) => e.preventDefault()} className="relative flex items-center gap-1.5">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={sidebarSearchInput}
-                    onChange={(e) => setSidebarSearchInput(e.target.value)}
-                    placeholder={providerConfig.placeholder}
-                    className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                  />
-                  {sidebarSearchInput && (
-                    <button
-                      type="button"
-                      onClick={() => setSidebarSearchInput('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={!sidebarSearchInput.trim()}
-                  className="text-[11px] h-7 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium cursor-pointer"
-                >
-                  Search
-                </Button>
-              </form>
-            </CardHeader>
-
-            <CardContent className="p-4 space-y-3">
-              {/* Default Empty State exactly from EncyclopediaSidebar.tsx */}
-              <div className="py-8 text-center space-y-2 px-2 select-text">
-                <div className="w-10 h-10 mx-auto rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-                  <span className="text-lg">{providerConfig.icon}</span>
-                </div>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {providerConfig.name} Search
-                </p>
-                <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
-                  {providerConfig.emptyHint}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Vignette Text in Fraunces editorial serif */}
+          <p className="mt-3 font-heading font-normal text-base sm:text-[17px] leading-[1.7] text-[#1E2B27] dark:text-slate-100 select-text">
+            A 40-year-old woman presents with abdominal pain and yellow discoloration of the skin for the past 4 days. She has been taking oral contraceptive pills for 4 years. Physical examination reveals hepatomegaly and shifting abdominal dullness. Hepatitis viral serologies are negative. Abdominal ultrasound demonstrates hepatic vein thrombosis, and liver biopsy shows marked centrilobular congestion with necrosis. Which of the following is the most likely diagnosis?
+          </p>
         </div>
-      )}
+
+        {/* Interactive Options list */}
+        <div className="space-y-2.5">
+          {SAMPLE_OPTIONS.map((optText: string, idx: number) => {
+            const isSelected = selectedOption === idx
+            const isStruck = struckOptions.includes(idx)
+            const isCorrect = idx === 0 // Option A is correct
+
+            let buttonStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)]'
+            let badgeStyle = 'bg-[#EDF0EE] dark:bg-slate-800 text-[#1E2B27] dark:text-white'
+            let statusBadge = null
+
+            if (isAnswerSubmitted) {
+              if (isCorrect) {
+                buttonStyle = 'border-2 border-[#0B7A5A] bg-[#E3F2EA] dark:bg-emerald-950/60 text-[#0B5F46] dark:text-emerald-200 font-medium'
+                badgeStyle = 'bg-white dark:bg-slate-900 text-[#0B5F46] dark:text-emerald-300 shadow-2xs'
+                statusBadge = (
+                  <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#0B5F46] dark:text-emerald-300 shrink-0">
+                    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                    Correct answer
+                  </span>
+                )
+              } else if (isSelected && !isCorrect) {
+                buttonStyle = 'border-2 border-[#C9573A] bg-[#FCEDE8] dark:bg-rose-950/40 text-[#8A2F16] dark:text-rose-200 font-medium'
+                badgeStyle = 'bg-white dark:bg-slate-900 text-[#8A2F16] dark:text-rose-300 shadow-2xs'
+                statusBadge = (
+                  <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#8A2F16] dark:text-rose-300 shrink-0">
+                    <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                    Your answer
+                  </span>
+                )
+              } else {
+                buttonStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-950/40 text-slate-400 dark:text-slate-500 opacity-60'
+              }
+            } else if (isSelected) {
+              buttonStyle = 'border-2 border-[#0B7A5A] bg-[#E3F2EA]/40 dark:bg-emerald-950/30 text-[#0B5F46] dark:text-emerald-300 font-medium'
+              badgeStyle = 'bg-[#0B7A5A] text-white'
+            }
+
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSelectOption(idx)}
+                onContextMenu={(e) => handleToggleStrike(e, idx)}
+                className={`w-full text-left p-3 rounded-[16px] transition-all flex items-center justify-between gap-3 cursor-pointer min-h-[50px] ${buttonStyle} ${
+                  isStruck && !isAnswerSubmitted ? 'line-through opacity-40 text-slate-400' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[12px] shrink-0 select-none ${badgeStyle}`}>
+                    {String.fromCharCode(65 + idx)}
+                  </span>
+                  <span className="text-[14px] font-medium select-text truncate">
+                    {optText}
+                  </span>
+                </div>
+                {statusBadge}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Instant Rationale Callout after submission */}
+        {isAnswerSubmitted && (
+          <div className="p-4 rounded-2xl bg-[#E3F2EA] dark:bg-emerald-950/50 border border-[#0B7A5A]/30 text-xs text-[#0B5F46] dark:text-emerald-200 space-y-1.5 animate-in fade-in duration-200">
+            <div className="font-semibold flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-[#0B7A5A]" />
+              <span>Key Educational Pearl</span>
+            </div>
+            <p className="leading-relaxed opacity-95">
+              Budd-Chiari syndrome results from thrombotic occlusion of hepatic veins, classic in hypercoagulable states (e.g. chronic oral contraceptive therapy). Biopsy demonstrates centrilobular congestion (nutmeg pattern) without viral infiltration.
+            </p>
+          </div>
+        )}
+
+        {/* Hint tip */}
+        <div className="flex items-center justify-between text-[11px] text-[#4F5C57] dark:text-slate-400 pt-2 border-t border-[#E3E8E5] dark:border-slate-800">
+          <span>💡 Click any option to test answer feedback • Right-click to cross off</span>
+          {isAnswerSubmitted && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedOption(null)
+                setIsAnswerSubmitted(false)
+                setStruckOptions([])
+              }}
+              className="font-semibold text-[#0B7A5A] dark:text-emerald-400 hover:underline cursor-pointer bg-transparent border-0"
+            >
+              Reset demo
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
-

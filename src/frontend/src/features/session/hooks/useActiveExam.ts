@@ -224,9 +224,10 @@ export function useActiveExam({ sessionData, isReviewMode, onEnterReviewMode }: 
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [attemptResult, selectedOption, attemptMutation.isPending, currentIndex, sessionData, isReviewMode])
 
-  const sessionTitle = sessionData?.qbank === 'medqa_usmle' 
+  const rawTitle = sessionData?.qbank === 'medqa_usmle' 
     ? (question?.exam_type || 'USMLE Practice')
-    : (question?.subject ? `MedMCQA • ${question.subject}` : 'MedMCQA • Custom Block')
+    : 'MedMCQA'
+  const sessionTitle = rawTitle.replace(/USMLE Step 2 (and Step 3|and 3)/g, 'USMLE Step 2 & 3')
 
   const togglePause = () => {
     setIsPaused(prev => !prev)

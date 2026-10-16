@@ -12,47 +12,47 @@ export function EngineGatePreview({ isSidebarOpen, onToggleSidebar }: EngineGate
   const [activeTab, setActiveTab] = useState<'session' | 'analytics'>('session')
 
   return (
-    <div className="w-full flex flex-col rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
+    <div className="w-full flex flex-col rounded-[32px] border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_4px_24px_rgba(30,43,39,0.06)] overflow-hidden">
       {/* Mock Browser Title Bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-100/80 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800">
-        <div className="flex items-center space-x-2">
-          <span className="w-3 h-3 rounded-full bg-rose-400 dark:bg-rose-500 inline-block" />
-          <span className="w-3 h-3 rounded-full bg-amber-400 dark:bg-amber-500 inline-block" />
-          <span className="w-3 h-3 rounded-full bg-emerald-400 dark:bg-emerald-500 inline-block" />
-          <span className="ml-2 text-xs font-medium text-slate-500 dark:text-slate-400 hidden sm:inline">
-            USMLE Study Helper • Live Preview
+      <div className="flex items-center justify-between px-5 py-3.5 bg-[#FAF9F6] dark:bg-slate-950/60 border-b border-[#E3E8E5] dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FCEDE8] border border-[#C9573A]/40 inline-block" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FEF7D6] border border-amber-400/40 inline-block" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#E3F2EA] border border-[#0B7A5A]/40 inline-block" />
+          <span className="ml-2 text-[12px] font-medium text-[#4F5C57] dark:text-slate-400 hidden sm:inline">
+            USMLE Study Helper • Interactive Demo
           </span>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex items-center bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-medium">
+        <div className="inline-flex gap-1 p-1 bg-[#EDF0EE] dark:bg-slate-800/80 rounded-full border border-[#E3E8E5]/70 dark:border-slate-800">
           <button
             type="button"
             onClick={() => setActiveTab('session')}
-            className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+            className={`min-h-[30px] px-3.5 rounded-full text-[12px] font-medium transition-all cursor-pointer ${
               activeTab === 'session'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-white font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
+                : 'bg-transparent text-[#3E4A45] dark:text-slate-400 hover:text-[#1E2B27]'
             }`}
           >
-            Practice
+            Practice Session
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('analytics')}
-            className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+            className={`min-h-[30px] px-3.5 rounded-full text-[12px] font-medium transition-all cursor-pointer ${
               activeTab === 'analytics'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-white font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
+                : 'bg-transparent text-[#3E4A45] dark:text-slate-400 hover:text-[#1E2B27]'
             }`}
           >
-            Analytics
+            Analytics Progress
           </button>
         </div>
       </div>
 
       {/* Preview Content Area */}
-      <div className="p-4 sm:p-5 select-text overflow-hidden">
+      <div className="p-5 sm:p-7 select-text overflow-hidden">
         {activeTab === 'session' ? (
           <PreviewSession isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} />
         ) : (
@@ -61,12 +61,12 @@ export function EngineGatePreview({ isSidebarOpen, onToggleSidebar }: EngineGate
       </div>
 
       {/* Footer Highlight */}
-      <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
-        <div className="flex items-center space-x-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-          <span>Full board simulation with MedlinePlus integration</span>
+      <div className="px-5 py-3 bg-[#FAF9F6] dark:bg-slate-950/60 border-t border-[#E3E8E5] dark:border-slate-800 flex items-center justify-between text-[12px] text-[#4F5C57] dark:text-slate-400">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-[#0B7A5A] dark:text-emerald-400" />
+          <span>Full offline board simulation with MedSearch &amp; MedGraph</span>
         </div>
-        <span className="font-medium text-slate-600 dark:text-slate-400">12,700+ Questions</span>
+        <span className="font-semibold text-[#1E2B27] dark:text-slate-300">12,700+ Questions</span>
       </div>
     </div>
   )
