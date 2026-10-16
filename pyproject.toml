@@ -1,7 +1,7 @@
 [project]
 name = "usmle-study-helper"
-version = "0.9.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "A high-yield, privacy-first USMLE study engine and interactive question dashboard."
 readme = "README.md"
 authors = [
     { name = "Semere Wubshet", email = "80589097+SemereWubshet@users.noreply.github.com" }

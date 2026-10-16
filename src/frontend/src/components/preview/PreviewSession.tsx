@@ -42,7 +42,7 @@ export function PreviewSession({
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div>
             <div className="text-[11px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
-              USMLE Step 1 • Interactive Practice Demo
+              USMLE Step 1
             </div>
             <div className="mt-1 flex items-center gap-3 flex-wrap">
               <h2 className="font-heading font-medium text-2xl sm:text-[26px] text-[#1E2B27] dark:text-white leading-[1.1]">
@@ -168,7 +168,7 @@ export function PreviewSession({
 
         {/* Hint tip */}
         <div className="flex items-center justify-between text-[11px] text-[#4F5C57] dark:text-slate-400 pt-2 border-t border-[#E3E8E5] dark:border-slate-800">
-          <span>💡 Click any option to test answer feedback • Right-click to cross off</span>
+          <span>Right-click to cross off</span>
           {isAnswerSubmitted && (
             <button
               type="button"

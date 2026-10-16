@@ -37,9 +37,9 @@ export function GoalsModal({ isOpen, onClose, onGoalsUpdated }: GoalsModalProps)
   const formatPaceDesc = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    if (mins === 0) return `${secs} seconds each`;
-    if (secs === 0) return `${mins} minute${mins > 1 ? 's' : ''} each`;
-    return `${mins} minute${mins > 1 ? 's' : ''} ${secs} seconds each`;
+    if (mins === 0) return `${secs} seconds`;
+    if (secs === 0) return `${mins} minute${mins > 1 ? 's' : ''}`;
+    return `${mins} minute${mins > 1 ? 's' : ''} ${secs} seconds`;
   };
 
   return (
@@ -76,7 +76,7 @@ export function GoalsModal({ isOpen, onClose, onGoalsUpdated }: GoalsModalProps)
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3">
               <label htmlFor="goal-passing" className="text-[16px] font-semibold text-[#1E2B27] dark:text-white">
-                Passing score
+                Pass mark
               </label>
               <span className="font-heading font-medium text-[26px] text-[#0B7A5A] dark:text-emerald-400">
                 {goals.passingThreshold}%
@@ -86,14 +86,22 @@ export function GoalsModal({ isOpen, onClose, onGoalsUpdated }: GoalsModalProps)
               id="goal-passing"
               type="range"
               min={30}
-              max={90}
+              max={95}
               step={5}
               value={goals.passingThreshold}
-              onChange={(e) => setGoals({ ...goals, passingThreshold: Number(e.target.value) })}
+              onChange={(e) => {
+                const newPassing = Number(e.target.value);
+                setGoals((prev) => ({
+                  ...prev,
+                  passingThreshold: newPassing,
+                  // If passing exceeds mastery, raise mastery to match
+                  excellenceThreshold: Math.max(prev.excellenceThreshold, newPassing),
+                }));
+              }}
               className="w-full h-2 rounded-lg accent-[#0B7A5A] cursor-pointer bg-[#E3E8E5] dark:bg-slate-700"
             />
             <div className="text-[14px] text-[#3E4A45] dark:text-slate-400 leading-normal">
-              Results below this show in amber.
+              Below this, your results show in amber.
             </div>
           </div>
 
@@ -101,7 +109,7 @@ export function GoalsModal({ isOpen, onClose, onGoalsUpdated }: GoalsModalProps)
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3">
               <label htmlFor="goal-mastery" className="text-[16px] font-semibold text-[#1E2B27] dark:text-white">
-                Mastery goal
+                Mastery target
               </label>
               <span className="font-heading font-medium text-[26px] text-[#0A5A43] dark:text-emerald-300">
                 {goals.excellenceThreshold}%
@@ -110,15 +118,23 @@ export function GoalsModal({ isOpen, onClose, onGoalsUpdated }: GoalsModalProps)
             <input
               id="goal-mastery"
               type="range"
-              min={50}
+              min={30}
               max={95}
               step={5}
               value={goals.excellenceThreshold}
-              onChange={(e) => setGoals({ ...goals, excellenceThreshold: Number(e.target.value) })}
+              onChange={(e) => {
+                const newMastery = Number(e.target.value);
+                setGoals((prev) => ({
+                  ...prev,
+                  excellenceThreshold: newMastery,
+                  // If mastery drops below passing, lower passing to match
+                  passingThreshold: Math.min(prev.passingThreshold, newMastery),
+                }));
+              }}
               className="w-full h-2 rounded-lg accent-[#0A5A43] cursor-pointer bg-[#E3E8E5] dark:bg-slate-700"
             />
             <div className="text-[14px] text-[#3E4A45] dark:text-slate-400 leading-normal">
-              Results at or above this show in deep green.
+              At or above this, results earn a star.
             </div>
           </div>
 
@@ -126,7 +142,7 @@ export function GoalsModal({ isOpen, onClose, onGoalsUpdated }: GoalsModalProps)
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3">
               <label htmlFor="goal-pace" className="text-[16px] font-semibold text-[#1E2B27] dark:text-white">
-                Pace per question
+                Pace
               </label>
               <span className="font-heading font-medium text-[26px] text-[#2F6FEB] dark:text-blue-400">
                 {goals.targetSeconds}s
@@ -143,7 +159,32 @@ export function GoalsModal({ isOpen, onClose, onGoalsUpdated }: GoalsModalProps)
               className="w-full h-2 rounded-lg accent-[#2F6FEB] cursor-pointer bg-[#E3E8E5] dark:bg-slate-700"
             />
             <div className="text-[14px] text-[#3E4A45] dark:text-slate-400 leading-normal">
-              Used to judge how fast you answer. {formatPaceDesc(goals.targetSeconds)}.
+              Aim for about {formatPaceDesc(goals.targetSeconds)} on each question.
+            </div>
+          </div>
+
+          {/* Daily Question Target */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between gap-3">
+              <label htmlFor="goal-daily" className="text-[16px] font-semibold text-[#1E2B27] dark:text-white">
+                Daily questions target
+              </label>
+              <span className="font-heading font-medium text-[26px] text-[#0B7A5A] dark:text-emerald-400">
+                {goals.dailyTarget || 40} Qs
+              </span>
+            </div>
+            <input
+              id="goal-daily"
+              type="range"
+              min={10}
+              max={120}
+              step={5}
+              value={goals.dailyTarget || 40}
+              onChange={(e) => setGoals({ ...goals, dailyTarget: Number(e.target.value) })}
+              className="w-full h-2 rounded-lg accent-[#0B7A5A] cursor-pointer bg-[#E3E8E5] dark:bg-slate-700"
+            />
+            <div className="text-[14px] text-[#3E4A45] dark:text-slate-400 leading-normal">
+              Your daily goal, which adds up to { (goals.dailyTarget || 40) * 7 } questions a week.
             </div>
           </div>
         </div>

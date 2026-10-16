@@ -256,7 +256,7 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-1 flex items-center justify-between gap-2">
-              <span className="text-[12px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
+              <span className="text-[12px] tracking-[0.08em] uppercase text-[#35433E] dark:text-slate-300 font-semibold">
                 Your session
               </span>
               <button
@@ -270,28 +270,28 @@ export default function Dashboard() {
             
             <div className="mt-5 flex flex-col gap-3.5">
               <div>
-                <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">Bank</div>
+                <div className="text-[13px] text-[#35433E] dark:text-slate-300 font-medium">Bank</div>
                 <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white mt-0.5">
                   {qbankDisplayLabel}
                 </div>
               </div>
 
               <div>
-                <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">Subjects</div>
+                <div className="text-[13px] text-[#35433E] dark:text-slate-300 font-medium">Subjects</div>
                 <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white mt-0.5 truncate">
                   {subjectsDisplayLabel}
                 </div>
               </div>
 
               <div>
-                <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">Questions</div>
+                <div className="text-[13px] text-[#35433E] dark:text-slate-300 font-medium">Questions</div>
                 <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white mt-0.5">
                   {blockCount[0]} in this block
                 </div>
               </div>
 
               <div>
-                <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">Timed exam</div>
+                <div className="text-[13px] text-[#35433E] dark:text-slate-300 font-medium">Timed exam</div>
                 <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white mt-0.5">
                   {examDurationMinutes} min
                 </div>

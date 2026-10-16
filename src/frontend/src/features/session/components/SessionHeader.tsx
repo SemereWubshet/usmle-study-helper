@@ -83,16 +83,16 @@ export function SessionHeader({
                   <button
                     type="button"
                     onClick={onTogglePause}
-                    className="h-8 px-3 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[12px] font-medium text-[#3E4A45] dark:text-slate-300 hover:bg-slate-100 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    className="h-8 px-3 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[12px] font-medium text-[#1E2B27] dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer shadow-2xs"
                   >
-                    {isPaused ? <Play className="w-3 h-3 text-[#0B7A5A] fill-[#0B7A5A]" /> : <Pause className="w-3 h-3 text-[#3E4A45]" />}
+                    {isPaused ? <Play className="w-3 h-3 text-[#0B7A5A] fill-[#0B7A5A]" /> : <Pause className="w-3 h-3 text-[#35433E] dark:text-slate-300" />}
                     <span>{isPaused ? 'Resume' : 'Pause'}</span>
                   </button>
                 )}
               </div>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#EDF0EE] dark:bg-slate-800 text-[13px] font-semibold text-[#3E4A45] dark:text-slate-300">
-                <Clock className="w-3.5 h-3.5 text-[#3E4A45] dark:text-slate-400" />
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#EDF0EE] dark:bg-slate-800 text-[13px] font-semibold text-[#1E2B27] dark:text-slate-200">
+                <Clock className="w-3.5 h-3.5 text-[#35433E] dark:text-slate-300" />
                 <span>{timeSpent}s</span>
               </span>
             )}
@@ -109,11 +109,11 @@ export function SessionHeader({
                 className={`min-h-[38px] px-3.5 sm:px-4 rounded-full text-[13px] sm:text-[14px] inline-flex items-center gap-2 transition-all cursor-pointer ${
                   isMedSearchOpen
                     ? 'bg-white dark:bg-slate-900 text-[#0B7A5A] dark:text-emerald-400 font-semibold shadow-[0_1px_4px_rgba(30,43,39,0.12)]'
-                    : 'bg-transparent text-[#3E4A45] dark:text-slate-400 font-medium hover:text-[#1E2B27] dark:hover:text-white'
+                    : 'bg-transparent text-[#35433E] dark:text-slate-300 font-medium hover:text-[#1E2B27] dark:hover:text-white'
                 }`}
                 title="Toggle MedSearch Panel"
               >
-                <Search className="w-4 h-4 shrink-0" />
+                <Search className="w-4 h-4 shrink-0 text-[#35433E] dark:text-slate-300" />
                 <span>MedSearch</span>
               </button>
 
@@ -123,7 +123,7 @@ export function SessionHeader({
                 className={`min-h-[38px] px-3.5 sm:px-4 rounded-full text-[13px] sm:text-[14px] inline-flex items-center gap-2 transition-all cursor-pointer ${
                   isGraphOpen
                     ? 'bg-white dark:bg-slate-900 text-[#0B7A5A] dark:text-emerald-400 font-semibold shadow-[0_1px_4px_rgba(30,43,39,0.12)]'
-                    : 'bg-transparent text-[#3E4A45] dark:text-slate-400 font-medium hover:text-[#1E2B27] dark:hover:text-white'
+                    : 'bg-transparent text-[#35433E] dark:text-slate-300 font-medium hover:text-[#1E2B27] dark:hover:text-white'
                 }`}
                 title="Toggle MedGraph Panel"
               >

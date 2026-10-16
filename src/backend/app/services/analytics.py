@@ -31,9 +31,10 @@ def get_dashboard_stats(db: sqlite3.Connection) -> DashboardOut:
             AVG(a.time_spent_seconds) as avg_time
         FROM study_sessions s
         LEFT JOIN session_attempts a ON s.id = a.session_id
+        WHERE s.created_at >= datetime('now', '-30 days')
         GROUP BY s.id
         ORDER BY s.created_at DESC
-        LIMIT 5;
+        LIMIT 100;
         """
     ).fetchall()
     

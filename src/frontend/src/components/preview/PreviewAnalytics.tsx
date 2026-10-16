@@ -49,9 +49,6 @@ export function PreviewAnalytics() {
       {/* 1. Header with Daily Target Meter matching Analytics.tsx */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-3 border-b border-[#E3E8E5] dark:border-slate-800">
         <div>
-          <div className="text-[11px] tracking-[0.08em] uppercase text-[#4F5C57] dark:text-slate-400 font-semibold">
-            Study Analytics Demo
-          </div>
           <h2 className="font-heading font-medium text-2xl text-[#1E2B27] dark:text-white mt-0.5">
             Your progress
           </h2>

@@ -1,11 +1,19 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchDashboardStats } from '../api'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getStoredGoals, type UserGoals } from '@/utils/goalsStorage'
+import { ChevronDown, Check } from 'lucide-react'
 
 // Helper to get local YYYY-MM-DD string
 const getLocalDateStr = (date: Date) => date.toLocaleDateString('en-CA')
+
+const sortOptions = [
+  { value: 'weakest', label: 'Weakest' },
+  { value: 'strongest', label: 'Strongest' },
+  { value: 'volume', label: 'Most practiced' },
+  { value: 'alphabetical', label: 'Alphabetical' },
+]
 
 export default function Analytics() {
   const { data: stats, isLoading } = useQuery({
@@ -27,6 +35,19 @@ export default function Analytics() {
   // State for exam scope selector and sorting
   const [selectedExamScope, setSelectedExamScope] = useState<string>('USMLE Step 1')
   const [sortBy, setSortBy] = useState<'weakest' | 'strongest' | 'alphabetical' | 'volume'>('weakest')
+  const [isSortOpen, setIsSortOpen] = useState(false)
+  const sortDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
+        setIsSortOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Calculate Real Data Metrics
   const { todayAnswered, currentStreak } = useMemo(() => {
@@ -156,7 +177,8 @@ export default function Analytics() {
     )
   }
 
-  const dailyGoal = 40
+  const dailyGoal = goals.dailyTarget || 40
+  const weeklyGoal = dailyGoal * 7
   const progressPercent = Math.min((todayAnswered / dailyGoal) * 100, 100)
 
   return (
@@ -281,28 +303,44 @@ export default function Analytics() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-            <label htmlFor="sort-select" className="text-[14px] text-[#3E4A45] dark:text-slate-400 font-medium">
-              Sort
-            </label>
-            <div className="relative">
-              <select
-                id="sort-select"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="min-h-[42px] pl-4 pr-9 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 font-medium text-[14px] text-[#1E2B27] dark:text-slate-200 outline-none cursor-pointer shadow-[0_1px_2px_rgba(30,43,39,0.04)] appearance-none"
-              >
-                <option value="weakest">Weakest</option>
-                <option value="strongest">Strongest</option>
-                <option value="volume">Most practiced</option>
-                <option value="alphabetical">Alphabetical</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#4F5C57]">
-                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
+          <div className="relative self-start sm:self-auto shrink-0" ref={sortDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsSortOpen(!isSortOpen)}
+              className="min-h-[42px] pl-4.5 pr-3.5 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[14px] font-medium text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 focus:border-[#0B7A5A] transition-all shadow-[0_1px_3px_rgba(30,43,39,0.04)] flex items-center gap-2 cursor-pointer select-none"
+            >
+              <span className="text-[#4F5C57] dark:text-slate-400 font-normal">Sort:</span>
+              <span className="font-semibold text-[#0B5F46] dark:text-emerald-300">
+                {sortOptions.find(o => o.value === sortBy)?.label || 'Weakest'}
+              </span>
+              <ChevronDown className={`w-4 h-4 text-[#4F5C57] dark:text-slate-400 transition-transform duration-200 ${isSortOpen ? 'rotate-180 text-[#0B7A5A]' : ''}`} />
+            </button>
+
+            {isSortOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 rounded-2xl shadow-[0_8px_30px_rgba(30,43,39,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] p-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
+                {sortOptions.map((option) => {
+                  const isSelected = sortBy === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setSortBy(option.value as any)
+                        setIsSortOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 font-semibold'
+                          : 'text-[#1E2B27] dark:text-slate-200 hover:bg-[#F4F7F5] dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {isSelected && <Check className="w-4 h-4 text-[#0B7A5A] dark:text-emerald-400" />}
+                    </button>
+                  )
+                })}
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -428,7 +466,7 @@ export default function Analytics() {
               {/* Dashed Weekly Target Line */}
               <div 
                 className="absolute left-0 right-0 border-t border-dashed border-[#8A9690] pointer-events-none"
-                style={{ bottom: `${Math.min((280 / maxWeeklyTotal) * 100, 95)}%` }}
+                style={{ bottom: `${Math.min((weeklyGoal / maxWeeklyTotal) * 100, 95)}%` }}
               />
 
               {/* 12 Weekly Bars */}
@@ -459,9 +497,9 @@ export default function Analytics() {
               })}
             </div>
 
-            <div className="mt-2.5 flex justify-between text-[13px] text-[#4F5C57] dark:text-slate-400">
+            <div className="mt-2.5 flex justify-between text-[13px] text-[#35433E] dark:text-slate-300">
               <span>12 weeks ago</span>
-              <span className="hidden sm:inline">Dashed line is your weekly goal, 280</span>
+              <span className="hidden sm:inline">Dashed line is your weekly goal, {weeklyGoal}</span>
               <span>This week</span>
             </div>
           </div>

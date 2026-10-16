@@ -53,11 +53,17 @@ export function AdvancedBenchmarks({
             <input
               id="rPas"
               type="range"
-              min={40}
-              max={90}
+              min={30}
+              max={95}
               step={5}
               value={passingThreshold}
-              onChange={(e) => setPassingThreshold(Number(e.target.value))}
+              onChange={(e) => {
+                const val = Number(e.target.value)
+                setPassingThreshold(val)
+                if (val > excellenceThreshold) {
+                  setExcellenceThreshold(val)
+                }
+              }}
               className="w-full h-2 accent-[#0B7A5A] cursor-pointer"
             />
             <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">
@@ -78,11 +84,17 @@ export function AdvancedBenchmarks({
             <input
               id="rMas"
               type="range"
-              min={60}
+              min={30}
               max={100}
               step={5}
               value={excellenceThreshold}
-              onChange={(e) => setExcellenceThreshold(Number(e.target.value))}
+              onChange={(e) => {
+                const val = Number(e.target.value)
+                setExcellenceThreshold(val)
+                if (val < passingThreshold) {
+                  setPassingThreshold(val)
+                }
+              }}
               className="w-full h-2 accent-[#4B3FD6] cursor-pointer"
             />
             <div className="text-[13px] text-[#4F5C57] dark:text-slate-400">

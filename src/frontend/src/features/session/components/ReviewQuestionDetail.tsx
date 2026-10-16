@@ -64,23 +64,12 @@ export function ReviewQuestionDetail({
               {question.subject}
             </span>
           )}
-          {attempt && (
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                attempt.isCorrect
-                  ? 'bg-[#E3F2EA] text-[#0B5F46] dark:bg-emerald-950/80 dark:text-emerald-300'
-                  : 'bg-[#FCEDE8] text-[#8A2F16] dark:bg-rose-950/80 dark:text-rose-300'
-              }`}
-            >
-              {attempt.isCorrect ? 'Correct Attempt' : 'Missed Question'}
-            </span>
-          )}
         </div>
 
         {attempt && (
-          <div className="flex items-center gap-1.5 text-xs text-[#4F5C57] dark:text-slate-400">
-            <Clock className="w-3.5 h-3.5 text-[#3E4A45] dark:text-slate-400" />
-            <span>Time spent: <strong className="text-[#1E2B27] dark:text-slate-200 font-semibold">{attempt.timeSpent}s</strong></span>
+          <div className="flex items-center gap-1.5 text-xs text-[#35433E] dark:text-slate-300">
+            <Clock className="w-3.5 h-3.5 text-[#35433E] dark:text-slate-300" />
+            <span>Time spent: <strong className="text-[#1E2B27] dark:text-white font-semibold">{attempt.timeSpent}s</strong></span>
           </div>
         )}
       </div>

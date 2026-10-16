@@ -20,7 +20,7 @@ export function EngineGatePreview({ isSidebarOpen, onToggleSidebar }: EngineGate
           <span className="w-2.5 h-2.5 rounded-full bg-[#FEF7D6] border border-amber-400/40 inline-block" />
           <span className="w-2.5 h-2.5 rounded-full bg-[#E3F2EA] border border-[#0B7A5A]/40 inline-block" />
           <span className="ml-2 text-[12px] font-medium text-[#4F5C57] dark:text-slate-400 hidden sm:inline">
-            USMLE Study Helper • Interactive Demo
+            USMLE Study Helper
           </span>
         </div>
 
@@ -64,7 +64,7 @@ export function EngineGatePreview({ isSidebarOpen, onToggleSidebar }: EngineGate
       <div className="px-5 py-3 bg-[#FAF9F6] dark:bg-slate-950/60 border-t border-[#E3E8E5] dark:border-slate-800 flex items-center justify-between text-[12px] text-[#4F5C57] dark:text-slate-400">
         <div className="flex items-center gap-2">
           <Sparkles className="w-3.5 h-3.5 text-[#0B7A5A] dark:text-emerald-400" />
-          <span>Full offline board simulation with MedSearch &amp; MedGraph</span>
+          <span>Full simulation with search, charts, and study tools</span>
         </div>
         <span className="font-semibold text-[#1E2B27] dark:text-slate-300">12,700+ Questions</span>
       </div>

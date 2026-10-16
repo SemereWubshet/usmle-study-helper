@@ -2,6 +2,7 @@ export interface UserGoals {
   passingThreshold: number; // e.g. 60 (%)
   excellenceThreshold: number; // e.g. 80 (%)
   targetSeconds: number; // e.g. 90 (seconds)
+  dailyTarget: number; // e.g. 40 (questions/day)
 }
 
 const STORAGE_KEY = 'usmle_user_goals';
@@ -10,6 +11,7 @@ export const DEFAULT_GOALS: UserGoals = {
   passingThreshold: 60,
   excellenceThreshold: 80,
   targetSeconds: 90,
+  dailyTarget: 40,
 };
 
 export function getStoredGoals(): UserGoals {
@@ -21,6 +23,7 @@ export function getStoredGoals(): UserGoals {
       passingThreshold: Number(parsed.passingThreshold) || 60,
       excellenceThreshold: Number(parsed.excellenceThreshold) || 80,
       targetSeconds: Number(parsed.targetSeconds) || 90,
+      dailyTarget: Number(parsed.dailyTarget) || 40,
     };
   } catch {
     return DEFAULT_GOALS;

@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { StoredAttempt } from '../types'
 
 interface QuestionNavigatorProps {
@@ -27,6 +29,23 @@ export function QuestionNavigator({
   const correctPct = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0
   const incorrectPct = totalQuestions > 0 ? (incorrectCount / totalQuestions) * 100 : 0
 
+  // Collapse / Expand state - large blocks (e.g. > 20 questions) default to compact mode
+  const isLargeBlock = totalQuestions > 20
+  const [isExpanded, setIsExpanded] = useState(!isLargeBlock)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const selectedTileRef = useRef<HTMLButtonElement>(null)
+
+  // Auto-scroll selected tile into view in compact mode when switching questions
+  useEffect(() => {
+    if (!isExpanded && selectedTileRef.current) {
+      selectedTileRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      })
+    }
+  }, [selectedReviewIndex, isExpanded])
+
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 rounded-[28px] p-6 sm:p-8 shadow-[0_1px_3px_rgba(30,43,39,0.06)] space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -39,47 +58,72 @@ export function QuestionNavigator({
           </h2>
         </div>
 
-        {/* Quick Filter Pill Group */}
-        <div className="inline-flex gap-1 p-1 bg-[#EDF0EE] dark:bg-slate-800/80 rounded-full border border-[#E3E8E5]/70 dark:border-slate-800 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => onChangeReviewFilter('all')}
-            className={`min-h-[36px] px-3.5 rounded-full text-[13px] font-medium transition-all cursor-pointer ${
-              reviewFilter === 'all'
-                ? 'bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-white font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
-                : 'bg-transparent text-[#3E4A45] dark:text-slate-400 hover:text-[#1E2B27]'
-            }`}
-          >
-            All ({totalQuestions})
-          </button>
-          <button
-            type="button"
-            onClick={() => onChangeReviewFilter('incorrect')}
-            className={`min-h-[36px] px-3.5 rounded-full text-[13px] font-medium transition-all cursor-pointer inline-flex items-center gap-1.5 ${
-              reviewFilter === 'incorrect'
-                ? 'bg-[#FCEDE8] text-[#8A2F16] dark:bg-rose-950/70 dark:text-rose-300 font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
-                : 'bg-transparent text-[#3E4A45] dark:text-slate-400 hover:text-[#8A2F16]'
-            }`}
-          >
-            <span>Incorrect</span>
-            <span className="w-5 h-5 rounded-full bg-[#8A2F16]/10 text-[#8A2F16] dark:bg-rose-950 dark:text-rose-300 inline-flex items-center justify-center text-[11px] font-bold">
-              {incorrectCount}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onChangeReviewFilter('correct')}
-            className={`min-h-[36px] px-3.5 rounded-full text-[13px] font-medium transition-all cursor-pointer inline-flex items-center gap-1.5 ${
-              reviewFilter === 'correct'
-                ? 'bg-[#E3F2EA] text-[#0B5F46] dark:bg-emerald-950/70 dark:text-emerald-300 font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
-                : 'bg-transparent text-[#3E4A45] dark:text-slate-400 hover:text-[#0B5F46]'
-            }`}
-          >
-            <span>Correct</span>
-            <span className="w-5 h-5 rounded-full bg-[#0B5F46]/10 text-[#0B5F46] dark:bg-emerald-950 dark:text-emerald-300 inline-flex items-center justify-center text-[11px] font-bold">
-              {correctCount}
-            </span>
-          </button>
+        {/* Right side controls: Filters + Expand/Collapse Button */}
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {/* Quick Filter Pill Group */}
+          <div className="inline-flex gap-1 p-1 bg-[#EDF0EE] dark:bg-slate-800/80 rounded-full border border-[#E3E8E5]/70 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => onChangeReviewFilter('all')}
+              className={`min-h-[36px] px-3.5 rounded-full text-[13px] font-medium transition-all cursor-pointer ${
+                reviewFilter === 'all'
+                  ? 'bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-white font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
+                  : 'bg-transparent text-[#3E4A45] dark:text-slate-400 hover:text-[#1E2B27]'
+              }`}
+            >
+              All ({totalQuestions})
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeReviewFilter('incorrect')}
+              className={`min-h-[36px] px-3.5 rounded-full text-[13px] font-medium transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                reviewFilter === 'incorrect'
+                  ? 'bg-[#FCEDE8] text-[#8A2F16] dark:bg-rose-950/70 dark:text-rose-300 font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
+                  : 'bg-transparent text-[#3E4A45] dark:text-slate-400 hover:text-[#8A2F16]'
+              }`}
+            >
+              <span>Incorrect</span>
+              <span className="w-5 h-5 rounded-full bg-[#8A2F16]/10 text-[#8A2F16] dark:bg-rose-950 dark:text-rose-300 inline-flex items-center justify-center text-[11px] font-bold">
+                {incorrectCount}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeReviewFilter('correct')}
+              className={`min-h-[36px] px-3.5 rounded-full text-[13px] font-medium transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                reviewFilter === 'correct'
+                  ? 'bg-[#E3F2EA] text-[#0B5F46] dark:bg-emerald-950/70 dark:text-emerald-300 font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
+                  : 'bg-transparent text-[#3E4A45] dark:text-slate-400 hover:text-[#0B5F46]'
+              }`}
+            >
+              <span>Correct</span>
+              <span className="w-5 h-5 rounded-full bg-[#0B5F46]/10 text-[#0B5F46] dark:bg-emerald-950 dark:text-emerald-300 inline-flex items-center justify-center text-[11px] font-bold">
+                {correctCount}
+              </span>
+            </button>
+          </div>
+
+          {/* Toggle Expand / Compact View Button (for blocks with > 10 questions) */}
+          {totalQuestions > 10 && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="min-h-[38px] px-3 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#4F5C57] dark:text-slate-300 text-[12px] font-medium hover:border-[#0B7A5A]/40 hover:text-[#1E2B27] dark:hover:text-white transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-[0_1px_2px_rgba(30,43,39,0.04)]"
+              title={isExpanded ? 'Collapse into scrollable drawer' : 'Expand full question grid'}
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="w-3.5 h-3.5 text-[#0B7A5A] dark:text-emerald-400" />
+                  <span>Compact</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3.5 h-3.5 text-[#0B7A5A] dark:text-emerald-400" />
+                  <span>Expand All</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -113,50 +157,60 @@ export function QuestionNavigator({
         </div>
       </div>
 
-      {/* Tiles Grid */}
+      {/* Tiles Grid with Compact Scroll vs Expanded Grid */}
       <div>
         {filteredIndexes.length === 0 ? (
           <div className="py-8 text-center text-sm text-[#4F5C57] dark:text-slate-400">
             {reviewFilter === 'incorrect' ? '🎉 Flawless! Zero incorrect questions in this block.' : 'No questions found for this filter.'}
           </div>
         ) : (
-          <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2.5">
-            {filteredIndexes.map((qIdx) => {
-              const att = attempts[qIdx]
-              const isSelected = selectedReviewIndex === qIdx
-              const isCorrect = att?.isCorrect === true
-              const isAnswered = Boolean(att)
+          <div
+            ref={scrollContainerRef}
+            className={`transition-all duration-200 -m-1.5 p-1.5 ${
+              !isExpanded
+                ? 'max-h-[154px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700'
+                : ''
+            }`}
+          >
+            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2.5">
+              {filteredIndexes.map((qIdx) => {
+                const att = attempts[qIdx]
+                const isSelected = selectedReviewIndex === qIdx
+                const isCorrect = att?.isCorrect === true
+                const isAnswered = Boolean(att)
 
-              let tileStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-[#FAF9F6] dark:bg-slate-800/40 text-[#4F5C57] dark:text-slate-400 hover:bg-[#EDF0EE]'
+                let tileStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-[#FAF9F6] dark:bg-slate-800/40 text-[#4F5C57] dark:text-slate-400 hover:bg-[#EDF0EE]'
 
-              if (isAnswered) {
-                if (isCorrect) {
-                  tileStyle = 'border border-[#0B7A5A]/30 bg-[#E3F2EA] dark:bg-emerald-950/40 text-[#0B5F46] dark:text-emerald-300 hover:bg-[#D4EBDD]'
-                } else {
-                  tileStyle = 'border border-[#C9573A]/30 bg-[#FCEDE8] dark:bg-rose-950/40 text-[#8A2F16] dark:text-rose-300 hover:bg-[#F9DCD3]'
+                if (isAnswered) {
+                  if (isCorrect) {
+                    tileStyle = 'border border-[#0B7A5A]/30 bg-[#E3F2EA] dark:bg-emerald-950/40 text-[#0B5F46] dark:text-emerald-300 hover:bg-[#D4EBDD]'
+                  } else {
+                    tileStyle = 'border border-[#C9573A]/30 bg-[#FCEDE8] dark:bg-rose-950/40 text-[#8A2F16] dark:text-rose-300 hover:bg-[#F9DCD3]'
+                  }
                 }
-              }
 
-              const ringStyle = isSelected
-                ? 'ring-2 ring-[#0B7A5A] ring-offset-2 dark:ring-offset-slate-900 font-bold shadow-sm scale-105 z-10'
-                : 'hover:scale-[1.02]'
+                const ringStyle = isSelected
+                  ? 'ring-2 ring-[#0B7A5A] ring-offset-1 dark:ring-offset-slate-900 font-bold shadow-md z-10'
+                  : 'hover:border-[#0B7A5A]/50'
 
-              return (
-                <button
-                  key={qIdx}
-                  type="button"
-                  onClick={() => onSelectReviewIndex(qIdx)}
-                  className={`h-12 rounded-[14px] flex flex-col items-center justify-center transition-all cursor-pointer relative select-none ${tileStyle} ${ringStyle}`}
-                >
-                  <span className="text-xs font-semibold">{qIdx + 1}</span>
-                  {att && (
-                    <span className="text-[10px] opacity-75">
-                      {att.timeSpent}s
-                    </span>
-                  )}
-                </button>
-              )
-            })}
+                return (
+                  <button
+                    key={qIdx}
+                    ref={isSelected ? selectedTileRef : undefined}
+                    type="button"
+                    onClick={() => onSelectReviewIndex(qIdx)}
+                    className={`h-12 rounded-[14px] flex flex-col items-center justify-center transition-all cursor-pointer relative select-none ${tileStyle} ${ringStyle}`}
+                  >
+                    <span className="text-xs font-semibold">{qIdx + 1}</span>
+                    {att && (
+                      <span className="text-[10px] opacity-75">
+                        {att.timeSpent}s
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

@@ -1,10 +1,19 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { fetchDashboardStats, fetchSessionReview, retrySession } from '../api'
-import { Eye, RotateCcw, Loader2 } from 'lucide-react'
+import { Eye, RotateCcw, Loader2, ChevronDown, Check } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getStoredGoals, type UserGoals } from '@/utils/goalsStorage'
+
+// 5 Time Range Options
+const timeRangeOptions = [
+  { value: '1', label: 'Past 24 hours' },
+  { value: '3', label: 'Past 3 days' },
+  { value: '7', label: 'Last 7 days' },
+  { value: '14', label: 'Last 14 days' },
+  { value: '30', label: 'Last 30 days' },
+]
 
 // Helper to format date header (e.g., "Today, Oct 15", "Yesterday", or "Oct 5")
 function formatDateHeader(dateStr: string): string {
@@ -48,8 +57,21 @@ export default function History() {
 
   // Filter tabs state: 'all' | 'below_passing'
   const [filterMode, setFilterMode] = useState<'all' | 'below_passing'>('all')
-  // Time range select state: '7' | '14' | '30' | 'all'
-  const [timeRange, setTimeRange] = useState<string>('14')
+  // Time range select state: default to '3' (Past 3 days)
+  const [timeRange, setTimeRange] = useState<string>('3')
+  const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false)
+  const timeDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (timeDropdownRef.current && !timeDropdownRef.current.contains(event.target as Node)) {
+        setIsTimeDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboardStats'],
@@ -62,7 +84,14 @@ export default function History() {
     onSuccess: (data) => {
       navigate('/session', {
         state: {
-          sessionData: data.sessionData,
+          sessionData: {
+            ...data.sessionData,
+            customConfig: {
+              passingThreshold: goals.passingThreshold,
+              excellenceThreshold: goals.excellenceThreshold,
+              targetSeconds: goals.targetSeconds,
+            },
+          },
           attempts: data.attempts,
           isReviewMode: true,
         },
@@ -189,14 +218,15 @@ export default function History() {
 
       {/* Filter Tabs & Time Range Select */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex gap-2.5 flex-wrap">
+        {/* Status filter pills */}
+        <div className="flex gap-2 p-1.5 bg-[#EFF4F0] dark:bg-slate-900/80 border border-[#E3E8E5]/70 dark:border-slate-800 rounded-full w-fit">
           <button
             type="button"
             onClick={() => setFilterMode('all')}
-            className={`min-h-[42px] px-5 rounded-full text-[14px] transition-all cursor-pointer ${
+            className={`min-h-[36px] px-4 rounded-full text-[13px] font-medium transition-all cursor-pointer ${
               filterMode === 'all'
-                ? 'border border-[#0B7A5A] bg-[#E3F2EA] text-[#0B5F46] font-semibold dark:bg-emerald-950/70 dark:text-emerald-300'
-                : 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)]'
+                ? 'bg-white dark:bg-slate-800 text-[#0B5F46] dark:text-emerald-300 font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
+                : 'text-[#4F5C57] dark:text-slate-400 hover:text-[#1E2B27] dark:hover:text-white'
             }`}
           >
             All sessions
@@ -205,35 +235,59 @@ export default function History() {
           <button
             type="button"
             onClick={() => setFilterMode('below_passing')}
-            className={`min-h-[42px] px-5 rounded-full text-[14px] transition-all cursor-pointer ${
+            className={`min-h-[36px] px-4 rounded-full text-[13px] font-medium transition-all cursor-pointer ${
               filterMode === 'below_passing'
-                ? 'border border-[#0B7A5A] bg-[#E3F2EA] text-[#0B5F46] font-semibold dark:bg-emerald-950/70 dark:text-emerald-300'
-                : 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)]'
+                ? 'bg-white dark:bg-slate-800 text-[#0B5F46] dark:text-emerald-300 font-semibold shadow-[0_1px_3px_rgba(30,43,39,0.08)]'
+                : 'text-[#4F5C57] dark:text-slate-400 hover:text-[#1E2B27] dark:hover:text-white'
             }`}
           >
             Below passing
           </button>
         </div>
 
-        {/* Time range selector */}
-        <div className="relative self-start sm:self-auto shrink-0">
-          <label htmlFor="time-range-select" className="sr-only">Time range</label>
-          <select
-            id="time-range-select"
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-            className="min-h-[42px] pl-4 pr-9 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 font-medium text-[14px] text-[#1E2B27] dark:text-slate-200 outline-none cursor-pointer shadow-[0_1px_2px_rgba(30,43,39,0.04)] appearance-none"
+        {/* Time range custom dropdown */}
+        <div className="relative self-start sm:self-auto shrink-0" ref={timeDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
+            className="min-h-[42px] pl-4.5 pr-3.5 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[14px] font-medium text-[#1E2B27] dark:text-slate-200 hover:border-[#0B7A5A]/50 focus:border-[#0B7A5A] transition-all shadow-[0_1px_3px_rgba(30,43,39,0.04)] flex items-center gap-2 cursor-pointer select-none"
           >
-            <option value="7">Last 7 days</option>
-            <option value="14">Last 14 days</option>
-            <option value="30">Last 30 days</option>
-            <option value="all">All time</option>
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#4F5C57]">
-            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
-              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-            </svg>
-          </div>
+            <span className="text-[#4F5C57] dark:text-slate-400 font-normal">Time:</span>
+            <span className="font-semibold text-[#0B5F46] dark:text-emerald-300">
+              {timeRangeOptions.find((o) => o.value === timeRange)?.label || 'Past 3 days'}
+            </span>
+            <ChevronDown
+              className={`w-4 h-4 text-[#4F5C57] dark:text-slate-400 transition-transform duration-200 ${
+                isTimeDropdownOpen ? 'rotate-180 text-[#0B7A5A]' : ''
+              }`}
+            />
+          </button>
+
+          {isTimeDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 rounded-2xl shadow-[0_8px_30px_rgba(30,43,39,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] p-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
+              {timeRangeOptions.map((option) => {
+                const isSelected = timeRange === option.value
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      setTimeRange(option.value)
+                      setIsTimeDropdownOpen(false)
+                    }}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all text-left cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 font-semibold'
+                        : 'text-[#1E2B27] dark:text-slate-200 hover:bg-[#F4F7F5] dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <span>{option.label}</span>
+                    {isSelected && <Check className="w-4 h-4 text-[#0B7A5A] dark:text-emerald-400" />}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -273,11 +327,11 @@ export default function History() {
                 const isMastery = accuracy >= goals.excellenceThreshold
                 const isPassing = accuracy >= goals.passingThreshold
 
-                let scoreColor = '#B4530A'
+                let scoreClass = 'text-[#C2410C] dark:text-amber-400 font-semibold'
                 if (isMastery) {
-                  scoreColor = '#0A5A43'
+                  scoreClass = 'text-[#0A5A43] dark:text-emerald-300 font-semibold'
                 } else if (isPassing) {
-                  scoreColor = '#0B7A5A'
+                  scoreClass = 'text-[#0B7A5A] dark:text-emerald-400 font-semibold'
                 }
 
                 // Scope & Block narrative
@@ -296,14 +350,14 @@ export default function History() {
                 return (
                   <div
                     key={session.session_id}
-                    className="bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 rounded-[20px] p-5 sm:p-6 shadow-[0_1px_3px_rgba(30,43,39,0.06)] flex flex-wrap items-center justify-between gap-4 sm:gap-6"
+                    className="group bg-white dark:bg-slate-900 border border-[#E3E8E5] dark:border-slate-800 hover:border-[#0B7A5A]/40 dark:hover:border-emerald-600/40 rounded-[24px] p-5 sm:p-6 shadow-[0_1px_3px_rgba(30,43,39,0.04)] hover:shadow-[0_4px_20px_rgba(30,43,39,0.06)] transition-all flex flex-wrap items-center justify-between gap-4 sm:gap-6"
                   >
                     {/* Left: Scope & Details */}
                     <div className="flex-1 min-w-[240px]">
-                      <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white">
+                      <div className="text-[17px] font-semibold text-[#1E2B27] dark:text-white group-hover:text-[#0B7A5A] dark:group-hover:text-emerald-400 transition-colors">
                         {scopeDisplay}
                       </div>
-                      <div className="mt-1 text-[14px] text-[#3E4A45] dark:text-slate-400">
+                      <div className="mt-1 text-[14px] text-[#4F5C57] dark:text-slate-400">
                         {blockDetails}
                       </div>
                     </div>
@@ -313,15 +367,14 @@ export default function History() {
                       {isScored ? (
                         <div className="flex items-baseline gap-1.5">
                           <span
-                            className="font-heading text-[24px] font-medium inline-flex items-center gap-1"
-                            style={{ color: scoreColor }}
+                            className={`font-heading text-[26px] inline-flex items-center gap-1 tracking-tight ${scoreClass}`}
                           >
-                            {isMastery && <span className="text-[16px] leading-none">★</span>}
+                            {isMastery && <span className="text-[15px] leading-none text-emerald-600 dark:text-emerald-400">★</span>}
                             <span>{accuracy}%</span>
                           </span>
                         </div>
                       ) : (
-                        <span className="text-[15px] text-[#4F5C57] dark:text-slate-400 font-medium">
+                        <span className="text-[14px] text-[#4F5C57] dark:text-slate-300 font-medium bg-[#EFF4F0] dark:bg-slate-800 px-3 py-1 rounded-full">
                           Not scored
                         </span>
                       )}
@@ -334,12 +387,12 @@ export default function History() {
                         type="button"
                         onClick={() => handleReview(session.session_id)}
                         disabled={isThisLoading}
-                        className="min-h-[42px] px-4.5 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 text-[14px] font-medium hover:border-[#0B7A5A]/50 shadow-[0_1px_2px_rgba(30,43,39,0.04)] transition-all cursor-pointer disabled:opacity-40 flex items-center gap-2"
+                        className="min-h-[40px] px-4.5 rounded-full border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200 text-[13px] font-medium hover:border-[#0B7A5A]/50 hover:bg-[#F8FAF9] dark:hover:bg-slate-800 shadow-[0_1px_2px_rgba(30,43,39,0.04)] transition-all cursor-pointer disabled:opacity-40 flex items-center gap-2"
                       >
                         {isReviewLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-[#0B7A5A]" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0B7A5A] dark:text-emerald-400" />
                         ) : (
-                          <Eye className="w-4 h-4 text-[#3E4A45]" />
+                          <Eye className="w-3.5 h-3.5 text-[#0B7A5A] dark:text-emerald-400 group-hover:scale-105 transition-transform" />
                         )}
                         <span>Review</span>
                       </button>
@@ -349,12 +402,12 @@ export default function History() {
                         type="button"
                         onClick={() => handleRetry(session.session_id)}
                         disabled={isThisLoading}
-                        className="min-h-[42px] px-5 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 text-[14px] font-semibold hover:bg-[#E3F2EA]/80 transition-all cursor-pointer disabled:opacity-40 flex items-center gap-2"
+                        className="min-h-[40px] px-5 rounded-full bg-[#E3F2EA] dark:bg-emerald-950/70 text-[#0B5F46] dark:text-emerald-300 text-[13px] font-semibold hover:bg-[#D4EBDD] dark:hover:bg-emerald-900/80 transition-all cursor-pointer disabled:opacity-40 flex items-center gap-2"
                       >
                         {isRetryLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <RotateCcw className="w-4 h-4" />
+                          <RotateCcw className="w-3.5 h-3.5" />
                         )}
                         <span>Retry block</span>
                       </button>

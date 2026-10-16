@@ -5,6 +5,7 @@ import {
   EXCELLENT_ACCURACY_THRESHOLD,
   TARGET_SECONDS_PER_QUESTION,
 } from '../types'
+import { getStoredGoals } from '@/utils/goalsStorage'
 
 interface UseSessionReviewProps {
   totalQuestions: number;
@@ -42,9 +43,10 @@ export function useSessionReview({ totalQuestions, attempts, customConfig }: Use
     return allIndexes
   }, [totalQuestions, reviewFilter, attempts])
 
-  const passingThreshold = customConfig?.passingThreshold ?? PASSING_ACCURACY_THRESHOLD
-  const excellenceThreshold = customConfig?.excellenceThreshold ?? EXCELLENT_ACCURACY_THRESHOLD
-  const targetSeconds = customConfig?.targetSeconds ?? TARGET_SECONDS_PER_QUESTION
+  const storedGoals = useMemo(() => getStoredGoals(), [])
+  const passingThreshold = customConfig?.passingThreshold ?? storedGoals.passingThreshold ?? PASSING_ACCURACY_THRESHOLD
+  const excellenceThreshold = customConfig?.excellenceThreshold ?? storedGoals.excellenceThreshold ?? EXCELLENT_ACCURACY_THRESHOLD
+  const targetSeconds = customConfig?.targetSeconds ?? storedGoals.targetSeconds ?? TARGET_SECONDS_PER_QUESTION
 
   return {
     reviewFilter,

@@ -199,7 +199,7 @@ code {
     --warm-bg: #FAF9F6;
     --warm-side-bg: #EFF4F0;
     --warm-text: #1E2B27;
-    --warm-muted: #4F5C57;
+    --warm-muted: #384641;
     --warm-border: #E3E8E5;
     --warm-emerald: #0B7A5A;
     --warm-emerald-light: #E3F2EA;
@@ -219,7 +219,7 @@ code {
     --secondary: oklch(0.269 0 0);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
+    --muted-foreground: oklch(0.82 0 0);
     --accent: oklch(0.269 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
@@ -239,6 +239,8 @@ code {
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+
+    --warm-muted: #CBD5E1;
 }
 
 @layer base {

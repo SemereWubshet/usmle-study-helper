@@ -13,8 +13,9 @@
 
 <p align="center">
   <a href="https://usmle.semere.dev"><img src="https://img.shields.io/badge/Web%20App-usmle.semere.dev-6366f1?style=for-the-badge" alt="Live Site" /></a>
+  <img src="https://img.shields.io/badge/Version-1.0.0-emerald?style=for-the-badge" alt="Version 1.0.0" />
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License" />
-  <img src="https://img.shields.io/badge/Architecture-Local--First-emerald?style=for-the-badge" alt="Local First" />
+  <img src="https://img.shields.io/badge/Architecture-Local--First-teal?style=for-the-badge" alt="Local First" />
   <img src="https://img.shields.io/badge/OS-Windows%20%7C%20Linux-orange?style=for-the-badge" alt="Platforms" />
 </p>
 
@@ -26,19 +27,11 @@
 
 * **Hosted Web UI ([usmle.semere.dev](https://usmle.semere.dev)):** Always up-to-date, modern React interface with dark mode, strike-through options, block timers, and high-yield analytics.
 * **Portable Desktop Engine:** Runs quietly on your local computer via a standalone executable. Your study history, performance metrics, and question attempts **never leave your laptop**.
-* **Zero Telemetry / Zero Cloud Storage:** You own your SQLite database in a simple portable folder. Backing up your entire study history is as easy as copying one folder to a USB drive.
-* **MedSearch (Multi-Source Medical Reference):** Instant, embedded clinical search drawer during review sessions with 4 integrated clinical providers:
-  * **openFDA:** Official FDA drug labeling, black box warnings, clinical pharmacology, indications, and direct DailyMed package insert links.
-  * **StatPearls:** Peer-reviewed clinical review articles covering pathophysiology, presentation, and high-yield USMLE management.
-  * **MedlinePlus:** Consumer-friendly disease summaries, symptoms, causes, and treatments from the National Institutes of Health.
-  * **RxNorm:** Normalized clinical drug concepts, generic formulations, strengths, and branded equivalents from the National Library of Medicine.
-* **MedGraph (Clinical Knowledge Constellation):** An interactive, dynamic pathophysiology visualizer that traces reasoning pathways from patient vignette clues to candidate diagnoses:
-  * **DR.KNOWS Biomedical Ontology:** Grounded in a high-yield pruned knowledge graph linking UMLS / SNOMED CT clinical concepts with precise medical relations (`causes`, `manifestation of`, `associated with`, `treats`).
-  * **Interactive Context Halos:** Surrounding differential nodes that students can click to add as additional findings or explore connected pathologies.
+* **Zero Telemetry or Cloud Storage:** You own your SQLite database in a simple portable folder. Backing up your entire study history is as easy as copying one folder to a USB drive.
+* **Personalized Goals & Benchmark Tracking:** Customize passing and mastery standards thresholds, daily question volume targets, and target pacing.
+* **MedSearch (Multi-Source Medical Reference):** Instant, embedded clinical search drawer during review sessions with 4 integrated clinical providers: **openFDA**, **StatPearls**,  **MedlinePlus**, and **RxNorm**.
+* **MedGraph (Clinical Knowledge Constellation):** An interactive, dynamic pathophysiology visualizer that traces reasoning pathways from patient vignette clues to candidate diagnoses. It uses a pruned knowledge graph linking UMLS / SNOMED CT clinical concepts with precise medical relations from **DR.KNOWS Biomedical Ontology**.
 * **AI Clinical Explanations (On-Demand Rationale):** For questions lacking official answer breakdowns, students can generate structured, high-yield clinical rationales with distractor analyses powered by OpenRouter directly from their local engine.
-* **Custom Exam Presets & Configurable Target Pacing:** Create, name, and tune custom exam presets (such as USMLE Step 1 and Step 2 & 3 targets) with custom question counts, block limits, and question pacing targets (60s–90s/question) stored locally.
-* **Live Engine Preview & Sandbox:** An authentic, fully styled interactive review preview on the welcome screen allowing students to experience active sessions, question navigators, and reference panels before launching their desktop engine.
-* **Engine Version Intelligence:** An unobtrusive, non-blocking notification in the web app that notifies students when a newer local engine release is available on GitHub.
 
 ---
 
