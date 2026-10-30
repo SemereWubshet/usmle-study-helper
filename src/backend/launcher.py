@@ -50,6 +50,19 @@ def main():
     print(f"  Directory: {APP_DIR}")
     print("=" * 60)
 
+    # Guard: Detect if running inside an unextracted zip archive or missing assets
+    if getattr(sys, 'frozen', False):
+        datasets_dir = APP_DIR / "datasets"
+        certs_dir = APP_DIR / "certs"
+        if not datasets_dir.exists() or not (datasets_dir / "medmcqa.db").exists():
+            print("\n" + "!" * 60)
+            print("  ERROR: Required datasets directory not found!")
+            print("  Did you extract the ZIP file before running?")
+            print("  Please extract the entire USMLEStudyHelper folder, then run.")
+            print("!" * 60)
+            input("\nPress Enter to exit...")
+            sys.exit(1)
+
     # 1. Initialize local portable profile storage (study.db)
     init_profile_db()
 
@@ -62,7 +75,8 @@ def main():
             "ssl_keyfile": str(SSL_KEY)
         }
     else:
-        print("[Launcher] No TLS certificates found in certs/; running standard HTTP on 127.0.0.1")
+        print("[Launcher] WARNING: No TLS certificates found in certs/; running standard HTTP on 127.0.0.1")
+        print("[Launcher] Note: Remote HTTPS websites (usmle.semere.dev) require HTTPS loopback.")
 
     # 3. Launch browser in a background thread
     threading.Thread(target=open_browser, daemon=True).start()
@@ -78,4 +92,15 @@ def main():
     )
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        print("\n" + "!" * 60)
+        print("  FATAL ERROR OCCURRED WHILE STARTING LOCAL ENGINE:")
+        print("!" * 60)
+        traceback.print_exc()
+        print("\n" + "=" * 60)
+        print("Please send a screenshot of this window to the USMLE Study Helper team for assistance.")
+        input("\nPress Enter to exit...")
+        sys.exit(1)

@@ -7,8 +7,8 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
-APP_VERSION = "1.0.0"
-MIN_FRONTEND_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
+MIN_FRONTEND_VERSION = "1.1.0"
 
 LAST_HEARTBEAT = time.time()
 WATCHDOG_TIMEOUT_SECONDS = 300
@@ -99,7 +99,10 @@ def watchdog_worker():
         idle_time = time.time() - LAST_HEARTBEAT
         if idle_time > WATCHDOG_TIMEOUT_SECONDS:
             print(f"[Watchdog] No active browser tabs detected for {int(idle_time)}s. Shutting down cleanly...")
-            os.kill(os.getpid(), signal.SIGINT)
+            if sys.platform == "win32":
+                os.kill(os.getpid(), signal.SIGTERM)
+            else:
+                os.kill(os.getpid(), signal.SIGINT)
             break
 
 

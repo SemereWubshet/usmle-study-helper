@@ -61,12 +61,12 @@ def get_db():
     """Yields a SQLite connection with the profile and all cartridges attached."""
     init_profile_db()
     
-    conn = sqlite3.connect(PROFILE_DB)
+    conn = sqlite3.connect(PROFILE_DB, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     
-    # Attach all available Q-Banks with distinct aliases
-    conn.execute(f"ATTACH DATABASE '{MEDMCQA_DB}' AS medmcqa;")
-    conn.execute(f"ATTACH DATABASE '{MEDQA_USMLE_DB}' AS medqa_usmle;")
+    # Attach all available Q-Banks with distinct aliases (using posix forward slashes for cross-platform SQLite compatibility)
+    conn.execute(f"ATTACH DATABASE '{MEDMCQA_DB.as_posix()}' AS medmcqa;")
+    conn.execute(f"ATTACH DATABASE '{MEDQA_USMLE_DB.as_posix()}' AS medqa_usmle;")
     
     try:
         yield conn

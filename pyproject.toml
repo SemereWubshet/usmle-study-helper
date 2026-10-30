@@ -1,6 +1,6 @@
 [project]
 name = "usmle-study-helper"
-version = "1.0.0"
+version = "1.1.0"
 description = "A high-yield, privacy-first USMLE study engine and interactive question dashboard."
 readme = "README.md"
 authors = [

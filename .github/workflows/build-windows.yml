@@ -38,6 +38,7 @@ jobs:
           echo "$SSL_KEY" > src/backend/certs/key.pem
 
       - name: Build Executable with PyInstaller
+        shell: bash
         run: |
           cd src/backend
           pyinstaller usmle_engine.spec --clean --noconfirm

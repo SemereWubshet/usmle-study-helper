@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://usmle.semere.dev"><img src="https://img.shields.io/badge/Web%20App-usmle.semere.dev-6366f1?style=for-the-badge" alt="Live Site" /></a>
-  <img src="https://img.shields.io/badge/Version-1.0.0-emerald?style=for-the-badge" alt="Version 1.0.0" />
+  <img src="https://img.shields.io/badge/Version-1.1.0-emerald?style=for-the-badge" alt="Version 1.1.0" />
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/Architecture-Local--First-teal?style=for-the-badge" alt="Local First" />
   <img src="https://img.shields.io/badge/OS-Windows%20%7C%20Linux-orange?style=for-the-badge" alt="Platforms" />
