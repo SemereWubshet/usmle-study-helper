@@ -173,6 +173,9 @@ export default function EngineGate({ children }: EngineGateProps) {
                     Double-click <code className="font-mono text-xs bg-[#EDF0EE] dark:bg-slate-800 px-1.5 py-0.5 rounded text-[#1E2B27] dark:text-slate-200">{binaryName}</code> to launch your local engine.
                   </p>
                 </div>
+                <div className="text-[12px] text-amber-700 dark:text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 leading-snug">
+                  <strong>Using Brave or Shields?</strong> Click the URL lock or shield icon in your browser and ensure <strong>Local network access</strong> is allowed so the web dashboard can talk to your offline desktop engine.
+                </div>
               </div>
 
               <div className="space-y-3">

@@ -7,8 +7,8 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
-APP_VERSION = "1.1.0"
-MIN_FRONTEND_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
+MIN_FRONTEND_VERSION = "1.2.0"
 
 LAST_HEARTBEAT = time.time()
 WATCHDOG_TIMEOUT_SECONDS = 300
@@ -99,6 +99,15 @@ def watchdog_worker():
         idle_time = time.time() - LAST_HEARTBEAT
         if idle_time > WATCHDOG_TIMEOUT_SECONDS:
             print(f"[Watchdog] No active browser tabs detected for {int(idle_time)}s. Shutting down cleanly...")
+            try:
+                from app.core.notifier import send_desktop_notification
+                send_desktop_notification(
+                    title="USMLE Study Helper - Idle Shutdown",
+                    message="The local engine shut down due to inactivity. Re-open USMLE-Helper to continue studying."
+                )
+            except Exception:
+                pass
+
             if sys.platform == "win32":
                 os.kill(os.getpid(), signal.SIGTERM)
             else:
