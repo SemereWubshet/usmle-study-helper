@@ -90,9 +90,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: USMLEStudyHelper-Linux
-          path: |
-            USMLEStudyHelper-Linux.tar.gz
-            USMLE-Helper-Linux
+          path: package/USMLEStudyHelper/
 
       - name: Publish to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/') || inputs.prerelease_tag != ''

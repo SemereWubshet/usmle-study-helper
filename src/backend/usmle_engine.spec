@@ -25,6 +25,7 @@ a = Analysis(
         'uvicorn.lifespan.on',
         'fastapi',
         'pydantic',
+        'pydantic_core',
         'httpx',
         'networkx',
         'gzip',

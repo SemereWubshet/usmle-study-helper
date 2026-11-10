@@ -90,9 +90,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: USMLEStudyHelper-Windows
-          path: |
-            USMLEStudyHelper-Windows.zip
-            USMLE-Helper.exe
+          path: package/USMLEStudyHelper/
 
       - name: Publish to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/') || inputs.prerelease_tag != ''

@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import socket
+import logging
 import webbrowser
 import threading
 from pathlib import Path
@@ -26,6 +27,13 @@ import uvicorn
 from app.core.config import APP_VERSION
 from app.database import init_profile_db
 from app.services.updater_service import cleanup_old_updates
+
+
+class _QuietPollingAccessFilter(logging.Filter):
+    """Suppresses noisy high-frequency polling logs (/updater/status, /heartbeat) from cluttering the console."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return "/api/v1/updater/status" not in msg and "/api/v1/heartbeat" not in msg
 
 DEFAULT_WEB_URL = os.environ.get("USMLE_WEB_URL", "https://usmle.semere.dev:8000")
 HOST = os.environ.get("USMLE_HOST", "127.0.0.1")
@@ -102,6 +110,7 @@ def main():
         threading.Thread(target=open_browser, daemon=True).start()
 
     # 4. Start Uvicorn engine
+    logging.getLogger("uvicorn.access").addFilter(_QuietPollingAccessFilter())
     from app.main import app
     uvicorn.run(
         app,

@@ -42,6 +42,27 @@ def _set_progress(**kwargs) -> None:
         _progress_state = UpdateProgressResponse(**updated)
 
 
+def _get_clean_spawn_env() -> dict[str, str]:
+    """Returns a copy of os.environ stripped of PyInstaller bootloader variables so child --onefile binaries unpack cleanly."""
+    env = os.environ.copy()
+    pyi_vars = [
+        "_MEIPASS",
+        "_MEIPASS2",
+        "LD_LIBRARY_PATH",
+        "LD_LIBRARY_PATH_ORIG",
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "PYINSTALLER_RESET_ENVIRONMENT",
+    ]
+    for key in pyi_vars:
+        env.pop(key, None)
+    # Restore original LD_LIBRARY_PATH if PyInstaller backed it up
+    if "LD_LIBRARY_PATH_ORIG" in os.environ:
+        env["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH_ORIG"]
+    # Also clear USMLE_UPDATE_TAG so the newly updated binary doesn't loop if it's already on that tag
+    return env
+
+
 def _download_and_apply_worker(target_version: str, download_url: str) -> None:
     """Background worker that streams the update binary, swaps executables atomically, and restarts."""
     global _is_updating
@@ -71,20 +92,24 @@ def _download_and_apply_worker(target_version: str, download_url: str) -> None:
                 total = int(resp.headers.get("content-length", 0))
                 _set_progress(total_bytes=total)
 
+                last_update_ts = 0.0
                 with open(new_path, "wb") as f:
                     for chunk in resp.iter_bytes(chunk_size=65536):
                         if not chunk:
                             continue
                         f.write(chunk)
                         downloaded += len(chunk)
-                        elapsed = max(0.001, time.time() - start_time)
-                        speed = (downloaded / (1024 * 1024)) / elapsed
-                        pct = round((downloaded / total) * 100, 1) if total > 0 else 50.0
-                        _set_progress(
-                            downloaded_bytes=downloaded,
-                            percent=min(99.9, pct),
-                            speed_mbps=round(speed, 2),
-                        )
+                        now = time.time()
+                        if now - last_update_ts >= 0.15 or downloaded == total:
+                            last_update_ts = now
+                            elapsed = max(0.001, now - start_time)
+                            speed = (downloaded / (1024 * 1024)) / elapsed
+                            pct = round((downloaded / total) * 100, 1) if total > 0 else 50.0
+                            _set_progress(
+                                downloaded_bytes=downloaded,
+                                percent=min(99.9, pct),
+                                speed_mbps=round(speed, 2),
+                            )
 
         if not new_path.exists() or new_path.stat().st_size < 1024:
             raise RuntimeError("Downloaded update binary appears incomplete or corrupted.")
@@ -115,14 +140,21 @@ def _download_and_apply_worker(target_version: str, download_url: str) -> None:
 
         if getattr(sys, "frozen", False):
             spawn_args = [str(exe_path), "--no-browser"]
+            clean_env = _get_clean_spawn_env()
             if sys.platform == "win32":
                 subprocess.Popen(
                     spawn_args,
                     cwd=str(exe_path.parent),
+                    env=clean_env,
                     creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200),
                 )
             else:
-                subprocess.Popen(spawn_args, cwd=str(exe_path.parent), start_new_session=True)
+                subprocess.Popen(
+                    spawn_args,
+                    cwd=str(exe_path.parent),
+                    env=clean_env,
+                    start_new_session=True,
+                )
 
             # Force immediate process exit after a brief moment so port 8000 is freed for the new binary
             time.sleep(0.3)

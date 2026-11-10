@@ -68,7 +68,10 @@ export function useAutoUpdater() {
       setProgress(initialStatus)
 
       stopPolling()
+      let isRequestInFlight = false
       pollingRef.current = window.setInterval(async () => {
+        if (isRequestInFlight) return
+        isRequestInFlight = true
         try {
           const status = await fetchUpdaterStatus()
           setProgress(status)
@@ -93,8 +96,10 @@ export function useAutoUpdater() {
             }
             return prev
           })
+        } finally {
+          isRequestInFlight = false
         }
-      }, 300)
+      }, 750)
     } catch (err: any) {
       setEngineUpdatingState(false)
       setProgress({
