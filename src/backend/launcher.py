@@ -8,6 +8,7 @@ the student's default browser to the study application gate.
 import os
 import sys
 import time
+import socket
 import webbrowser
 import threading
 from pathlib import Path
@@ -22,7 +23,9 @@ else:
 sys.path.insert(0, str(APP_DIR))
 
 import uvicorn
+from app.core.config import APP_VERSION
 from app.database import init_profile_db
+from app.services.updater_service import cleanup_old_updates
 
 DEFAULT_WEB_URL = os.environ.get("USMLE_WEB_URL", "https://usmle.semere.dev:8000")
 HOST = os.environ.get("USMLE_HOST", "127.0.0.1")
@@ -44,11 +47,24 @@ def open_browser():
     except Exception as e:
         print(f"[Launcher] Could not launch browser automatically: {e}")
 
+def _wait_for_port_release(host: str, port: int, timeout: float = 8.0) -> None:
+    """When relaunched after an auto-update, wait for the old engine process to release the port."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(0.3)
+            if sock.connect_ex((host, port)) != 0:
+                return
+        time.sleep(0.25)
+
 def main():
     print("=" * 60)
-    print("  USMLE Study Helper - Local Engine")
+    print(f"  USMLE Study Helper - Local Engine v{APP_VERSION}")
     print(f"  Directory: {APP_DIR}")
     print("=" * 60)
+
+    if "--no-browser" in sys.argv:
+        _wait_for_port_release(HOST, PORT)
 
     # Guard: Detect if running inside an unextracted zip archive or missing assets
     if getattr(sys, 'frozen', False):
@@ -62,6 +78,9 @@ def main():
             print("!" * 60)
             input("\nPress Enter to exit...")
             sys.exit(1)
+
+    # 0. Clean up any residual .old or .new binary from a previous auto-update
+    cleanup_old_updates()
 
     # 1. Initialize local portable profile storage (study.db)
     init_profile_db()
@@ -78,8 +97,9 @@ def main():
         print("[Launcher] WARNING: No TLS certificates found in certs/; running standard HTTP on 127.0.0.1")
         print("[Launcher] Note: Remote HTTPS websites (usmle.semere.dev) require HTTPS loopback.")
 
-    # 3. Launch browser in a background thread
-    threading.Thread(target=open_browser, daemon=True).start()
+    # 3. Launch browser in a background thread (skip if relaunched after an auto-update)
+    if "--no-browser" not in sys.argv:
+        threading.Thread(target=open_browser, daemon=True).start()
 
     # 4. Start Uvicorn engine
     from app.main import app

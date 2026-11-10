@@ -8,6 +8,13 @@ from app.models.clinical_graph import (
     BuildGraphRequest,
     ClinicalGraphResponse,
 )
+from app.models.updater import (
+    UpdaterPhase,
+    ComponentUpdateManifest,
+    UpdateCheckResponse,
+    UpdateStartRequest,
+    UpdateProgressResponse,
+)
 from app.models_legacy import (
     QuestionOut,
     AttemptIn,
@@ -30,6 +37,11 @@ __all__ = [
     "CluePath",
     "BuildGraphRequest",
     "ClinicalGraphResponse",
+    "UpdaterPhase",
+    "ComponentUpdateManifest",
+    "UpdateCheckResponse",
+    "UpdateStartRequest",
+    "UpdateProgressResponse",
     "QuestionOut",
     "AttemptIn",
     "AttemptOut",

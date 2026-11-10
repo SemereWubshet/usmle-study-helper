@@ -55,6 +55,11 @@ export const checkEngineHealth = async (customBaseUrl?: string): Promise<EngineH
 
 // Tracks health check verification to avoid spamming the health endpoint on network errors
 let isVerifyingDisconnect = false;
+let isEngineUpdating = false;
+
+export const setEngineUpdatingState = (updating: boolean) => {
+  isEngineUpdating = updating;
+};
 
 // Intercepts API fetch errors, validates whether the engine is truly offline, and notifies the UI gate
 const safeFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -62,8 +67,8 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const res = await fetch(input, init);
     return res;
   } catch (err: any) {
-    // 1. Never disconnect for user/browser-aborted requests (e.g. fast tab navigation)
-    if (err?.name === 'AbortError') {
+    // 1. Never disconnect for user/browser-aborted requests or during an active engine auto-update
+    if (err?.name === 'AbortError' || isEngineUpdating) {
       throw err;
     }
 
@@ -76,9 +81,11 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
           isVerifyingDisconnect = false;
         })
         .catch(() => {
-          // Confirmed offline: notify the UI gate
+          // Confirmed offline: notify the UI gate (unless an auto-update just began)
           isVerifyingDisconnect = false;
-          window.dispatchEvent(new CustomEvent('engine-disconnected'));
+          if (!isEngineUpdating) {
+            window.dispatchEvent(new CustomEvent('engine-disconnected'));
+          }
         });
     }
 

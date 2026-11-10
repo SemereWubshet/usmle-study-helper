@@ -5,6 +5,15 @@ on:
     tags:
       - 'v*'
   workflow_dispatch: # Allows triggering the build manually from GitHub Actions UI
+    inputs:
+      test_version:
+        description: 'Optional version override (e.g. 1.2.1)'
+        required: false
+        type: string
+      prerelease_tag:
+        description: 'Optional hidden pre-release tag to publish (e.g. v1.2.1-test)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -37,6 +46,15 @@ jobs:
           echo "$SSL_CERT" > src/backend/certs/cert.pem
           echo "$SSL_KEY" > src/backend/certs/key.pem
 
+      - name: Override Engine Version (Optional Test Build)
+        if: ${{ inputs.test_version != '' }}
+        shell: bash
+        env:
+          TEST_VERSION: ${{ inputs.test_version }}
+        run: |
+          sed -i "s/^APP_VERSION = .*/APP_VERSION = \"${TEST_VERSION}\"/" src/backend/app/core/config.py
+          grep "^APP_VERSION" src/backend/app/core/config.py
+
       - name: Build Executable with PyInstaller
         shell: bash
         run: |
@@ -52,8 +70,9 @@ jobs:
           mkdir -p package/USMLEStudyHelper/graphdata
           mkdir -p package/USMLEStudyHelper/profile
 
-          # Copy the PyInstaller output folder or binary
-          cp -r src/backend/dist/USMLEStudyHelper/* package/USMLEStudyHelper/
+          # Copy the standalone --onefile PyInstaller binary
+          cp src/backend/dist/USMLE-Helper.exe package/USMLEStudyHelper/USMLE-Helper.exe
+          cp src/backend/dist/USMLE-Helper.exe ./USMLE-Helper.exe
           
           # Copy certificates, datasets, and clinical knowledge graph into the package
           cp src/backend/certs/*.pem package/USMLEStudyHelper/certs/
@@ -71,13 +90,18 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: USMLEStudyHelper-Windows
-          path: USMLEStudyHelper-Windows.zip
+          path: |
+            USMLEStudyHelper-Windows.zip
+            USMLE-Helper.exe
 
       - name: Publish to GitHub Releases
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.prerelease_tag != ''
         uses: softprops/action-gh-release@v2
         with:
-          files: USMLEStudyHelper-Windows.zip
+          tag_name: ${{ inputs.prerelease_tag != '' && inputs.prerelease_tag || github.ref_name }}
+          files: |
+            USMLEStudyHelper-Windows.zip
+            USMLE-Helper.exe
           draft: false
-          prerelease: false
+          prerelease: ${{ inputs.prerelease_tag != '' }}
           generate_release_notes: true

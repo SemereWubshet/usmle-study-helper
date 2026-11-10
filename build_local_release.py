@@ -80,17 +80,22 @@ def main():
     for target in [certs_target, datasets_target, graphdata_target, profile_target]:
         target.mkdir(parents=True, exist_ok=True)
 
-    # Copy PyInstaller binary & runtime files
+    # Copy PyInstaller binary (--onefile or --onedir fallback)
+    bin_name = "USMLE-Helper.exe" if sys.platform == "win32" else "USMLE-Helper"
+    built_exe = BACKEND_DIR / "dist" / bin_name
     built_dist = BACKEND_DIR / "dist" / "USMLEStudyHelper"
-    if not built_dist.exists():
-        print(f"\033[1;31m[ERROR]\033[0m Expected output at {built_dist} does not exist!")
+
+    if built_exe.exists() and built_exe.is_file():
+        log(f"Copying standalone --onefile binary {built_exe} to {DIST_APP_DIR}...")
+        shutil.copy2(built_exe, DIST_APP_DIR / bin_name)
+    elif built_dist.exists():
+        log(f"Copying engine binaries from {built_dist} to {DIST_APP_DIR}...")
+        shutil.copytree(built_dist, DIST_APP_DIR, dirs_exist_ok=True)
+    else:
+        print(f"\033[1;31m[ERROR]\033[0m Expected output at {built_exe} does not exist!")
         sys.exit(1)
 
-    log(f"Copying engine binaries from {built_dist} to {DIST_APP_DIR}...")
-    shutil.copytree(built_dist, DIST_APP_DIR, dirs_exist_ok=True)
-
     # Ensure executable permissions on Linux/macOS
-    bin_name = "USMLE-Helper.exe" if sys.platform == "win32" else "USMLE-Helper"
     exe_file = DIST_APP_DIR / bin_name
     if exe_file.exists():
         exe_file.chmod(0o755)

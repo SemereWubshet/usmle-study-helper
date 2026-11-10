@@ -1,0 +1,166 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import {
+  fetchUpdaterCheck,
+  triggerEngineUpdate,
+  fetchUpdaterStatus,
+  checkEngineHealth,
+  setEngineUpdatingState,
+  type UpdateCheckResponse,
+  type UpdateProgressResponse,
+} from '../api'
+
+export function useAutoUpdater() {
+  const [checkInfo, setCheckInfo] = useState<UpdateCheckResponse | null>(null)
+  const [progress, setProgress] = useState<UpdateProgressResponse | null>(null)
+  const [isDismissed, setIsDismissed] = useState(false)
+  const [isWaitingForReconnect, setIsWaitingForReconnect] = useState(false)
+
+  const pollingRef = useRef<number | null>(null)
+  const reconnectRef = useRef<number | null>(null)
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current !== null) {
+      window.clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+  }, [])
+
+  const stopReconnectPolling = useCallback(() => {
+    if (reconnectRef.current !== null) {
+      window.clearInterval(reconnectRef.current)
+      reconnectRef.current = null
+    }
+  }, [])
+
+  const startReconnectWatcher = useCallback((expectedVersion?: string | null) => {
+    setIsWaitingForReconnect(true)
+    stopReconnectPolling()
+
+    reconnectRef.current = window.setInterval(async () => {
+      try {
+        const health = await checkEngineHealth()
+        if (health.status === 'healthy') {
+          const cleanHealthVer = health.version.replace(/^v/, '')
+          const cleanExpected = expectedVersion?.replace(/^v/, '')
+          if (!cleanExpected || cleanHealthVer === cleanExpected) {
+            stopReconnectPolling()
+            setIsWaitingForReconnect(false)
+            setEngineUpdatingState(false)
+            setProgress(prev => prev ? { ...prev, phase: 'completed', percent: 100, message: `Updated to v${health.version}! Reloading...` } : null)
+            setTimeout(() => {
+              window.location.reload()
+            }, 900)
+          }
+        }
+      } catch {
+        // Engine is still restarting, keep waiting quietly
+      }
+    }, 800)
+  }, [stopReconnectPolling])
+
+  const beginUpdate = useCallback(async (targetVersion?: string, downloadUrl?: string) => {
+    setEngineUpdatingState(true)
+    try {
+      const initialStatus = await triggerEngineUpdate({
+        target_version: targetVersion,
+        download_url: downloadUrl,
+      })
+      setProgress(initialStatus)
+
+      stopPolling()
+      pollingRef.current = window.setInterval(async () => {
+        try {
+          const status = await fetchUpdaterStatus()
+          setProgress(status)
+
+          if (status.phase === 'restarting') {
+            stopPolling()
+            startReconnectWatcher(status.target_version || targetVersion)
+          } else if (status.phase === 'completed') {
+            stopPolling()
+            setEngineUpdatingState(false)
+          } else if (status.phase === 'error') {
+            stopPolling()
+            setEngineUpdatingState(false)
+          }
+        } catch {
+          // If status fetch fails while phase was applying/downloading, engine likely restarted
+          setProgress(prev => {
+            if (prev && (prev.phase === 'applying' || prev.phase === 'restarting' || prev.percent >= 95)) {
+              stopPolling()
+              startReconnectWatcher(prev.target_version || targetVersion)
+              return { ...prev, phase: 'restarting', percent: 100, message: 'Restarting local engine...' }
+            }
+            return prev
+          })
+        }
+      }, 300)
+    } catch (err: any) {
+      setEngineUpdatingState(false)
+      setProgress({
+        phase: 'error',
+        downloaded_bytes: 0,
+        total_bytes: 0,
+        percent: 0,
+        speed_mbps: 0,
+        message: 'Could not start automatic update.',
+        error: err?.message || 'Unknown error',
+      })
+    }
+  }, [stopPolling, startReconnectWatcher])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function checkAndAutoTrigger() {
+      try {
+        const urlParams = new URLSearchParams(window.location.search)
+        const simulated = urlParams.get('testUpdate') || localStorage.getItem('usmle_simulate_latest_version')
+
+        const result = await fetchUpdaterCheck(simulated)
+        if (!isMounted || !result.update_available) return
+
+        setCheckInfo(result)
+
+        // Automatically start the update when running as a packaged executable (or when simulated)
+        if (result.is_frozen || simulated) {
+          const comp = result.components[0]
+          const mockUrl = localStorage.getItem('usmle_mock_download_url') || urlParams.get('mockUrl')
+          const downloadUrl = mockUrl || comp?.download_url
+          await beginUpdate(result.latest_version, downloadUrl)
+        }
+      } catch {
+        // Ignore if engine is older and lacks /api/v1/updater/check or user is offline
+      }
+    }
+
+    checkAndAutoTrigger()
+
+    return () => {
+      isMounted = false
+      stopPolling()
+      stopReconnectPolling()
+    }
+  }, [beginUpdate, stopPolling, stopReconnectPolling])
+
+  const retryUpdate = useCallback(() => {
+    const comp = checkInfo?.components[0]
+    beginUpdate(checkInfo?.latest_version, comp?.download_url)
+  }, [checkInfo, beginUpdate])
+
+  const dismiss = useCallback(() => {
+    stopPolling()
+    stopReconnectPolling()
+    setEngineUpdatingState(false)
+    setIsDismissed(true)
+  }, [stopPolling, stopReconnectPolling])
+
+  return {
+    checkInfo,
+    progress,
+    isDismissed,
+    isWaitingForReconnect,
+    retryUpdate,
+    dismiss,
+  }
+}

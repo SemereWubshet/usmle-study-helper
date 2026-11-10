@@ -6,6 +6,7 @@ from app.api.routes.analytics import router as analytics_router
 from app.api.routes.encyclopedia import router as encyclopedia_router
 from app.api.routes.clinical_graph import router as clinical_graph_router
 from app.api.routes.explanation import router as explanation_router
+from app.api.routes.updater import router as updater_router
 
 api_router = APIRouter()
 
@@ -16,4 +17,5 @@ api_router.include_router(analytics_router)
 api_router.include_router(encyclopedia_router)
 api_router.include_router(clinical_graph_router)
 api_router.include_router(explanation_router)
+api_router.include_router(updater_router)
 
