@@ -43,23 +43,19 @@ def _set_progress(**kwargs) -> None:
 
 
 def _get_clean_spawn_env() -> dict[str, str]:
-    """Returns a copy of os.environ stripped of PyInstaller bootloader variables so child --onefile binaries unpack cleanly."""
+    """Returns a copy of os.environ configured with PYINSTALLER_RESET_ENVIRONMENT=1 so child --onefile binaries unpack cleanly."""
     env = os.environ.copy()
-    pyi_vars = [
-        "_MEIPASS",
-        "_MEIPASS2",
-        "LD_LIBRARY_PATH",
-        "LD_LIBRARY_PATH_ORIG",
-        "PYTHONPATH",
-        "PYTHONHOME",
-        "PYINSTALLER_RESET_ENVIRONMENT",
-    ]
-    for key in pyi_vars:
-        env.pop(key, None)
-    # Restore original LD_LIBRARY_PATH if PyInstaller backed it up
+    # Official PyInstaller 6.x flag: forces the child --onefile bootloader to ignore the parent's
+    # _PYI_APPLICATION_HOME_DIR and unpack its own fresh temporary environment.
+    env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    for key in list(env.keys()):
+        if key.startswith("_PYI_") or key in ("_MEIPASS", "_MEIPASS2", "PYTHONPATH", "PYTHONHOME"):
+            env.pop(key, None)
+    # Restore original LD_LIBRARY_PATH if PyInstaller backed it up, otherwise remove it
     if "LD_LIBRARY_PATH_ORIG" in os.environ:
         env["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH_ORIG"]
-    # Also clear USMLE_UPDATE_TAG so the newly updated binary doesn't loop if it's already on that tag
+    else:
+        env.pop("LD_LIBRARY_PATH", None)
     return env
 
 
@@ -141,22 +137,16 @@ def _download_and_apply_worker(target_version: str, download_url: str) -> None:
         if getattr(sys, "frozen", False):
             spawn_args = [str(exe_path), "--no-browser"]
             clean_env = _get_clean_spawn_env()
-            if sys.platform == "win32":
-                subprocess.Popen(
-                    spawn_args,
-                    cwd=str(exe_path.parent),
-                    env=clean_env,
-                    creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200),
-                )
-            else:
-                subprocess.Popen(
-                    spawn_args,
-                    cwd=str(exe_path.parent),
-                    env=clean_env,
-                    start_new_session=True,
-                )
-
-            # Force immediate process exit after a brief moment so port 8000 is freed for the new binary
+            subprocess.Popen(
+                spawn_args,
+                cwd=str(exe_path.parent),
+                env=clean_env,
+                **(
+                    {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)}
+                    if sys.platform == "win32"
+                    else {"start_new_session": True}
+                ),
+            )
             time.sleep(0.3)
             os._exit(0)
         else:
