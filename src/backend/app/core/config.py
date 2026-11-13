@@ -7,8 +7,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
-APP_VERSION = "1.2.0"
-MIN_FRONTEND_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 
 LAST_HEARTBEAT = time.time()
 WATCHDOG_TIMEOUT_SECONDS = 300

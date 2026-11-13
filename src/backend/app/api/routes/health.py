@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.core.config import APP_VERSION, MIN_FRONTEND_VERSION, update_heartbeat
+from app.core.config import APP_VERSION, update_heartbeat
 
 router = APIRouter(tags=["Health & System"])
 
@@ -23,10 +23,9 @@ def health_check():
 
 @router.get("/api/v1/version")
 def get_version():
-    """Version handshake endpoint to verify compatibility between remote frontend and local engine."""
+    """Returns the current local engine version."""
     return {
         "version": APP_VERSION,
-        "min_frontend_version": MIN_FRONTEND_VERSION,
         "engine": "USMLE-Study-Helper-Local-Engine"
     }
 
