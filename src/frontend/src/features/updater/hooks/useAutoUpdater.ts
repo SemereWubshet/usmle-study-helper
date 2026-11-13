@@ -38,6 +38,16 @@ export function useAutoUpdater() {
 
   const pollingRef = useRef<number | null>(null)
   const reconnectRef = useRef<number | null>(null)
+  const latestProgressRef = useRef<UpdateProgressResponse | null>(null)
+  const hasTriggeredReloadRef = useRef(false)
+
+  const updateProgress = useCallback((next: UpdateProgressResponse | null | ((prev: UpdateProgressResponse | null) => UpdateProgressResponse | null)) => {
+    setProgress(prev => {
+      const resolved = typeof next === 'function' ? next(prev) : next
+      latestProgressRef.current = resolved
+      return resolved
+    })
+  }, [])
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current !== null) {
@@ -57,7 +67,10 @@ export function useAutoUpdater() {
     setIsWaitingForReconnect(true)
     stopReconnectPolling()
 
+    let isCheckingHealth = false
     reconnectRef.current = window.setInterval(async () => {
+      if (isCheckingHealth || hasTriggeredReloadRef.current) return
+      isCheckingHealth = true
       try {
         const health = await checkEngineHealth()
         if (health.status === 'healthy') {
@@ -66,29 +79,33 @@ export function useAutoUpdater() {
             (initialVersion && health.version.replace(/^v/, '') !== initialVersion.replace(/^v/, ''))
 
           if (!expectedVersion || isUpgraded) {
+            hasTriggeredReloadRef.current = true
             stopReconnectPolling()
             setIsWaitingForReconnect(false)
             setEngineUpdatingState(false)
-            setProgress(prev => prev ? { ...prev, phase: 'completed', percent: 100, message: `Updated to v${health.version}! Reloading...` } : null)
+            updateProgress(prev => prev ? { ...prev, phase: 'completed', percent: 100, message: `Updated to v${health.version}! Reloading...` } : null)
             setTimeout(() => {
               window.location.reload()
-            }, 800)
+            }, 600)
           }
         }
       } catch {
         // Engine is still restarting, keep waiting quietly
+      } finally {
+        isCheckingHealth = false
       }
-    }, 800)
-  }, [stopReconnectPolling])
+    }, 700)
+  }, [stopReconnectPolling, updateProgress])
 
   const beginUpdate = useCallback(async (targetVersion?: string, downloadUrl?: string, currentVersion?: string) => {
     setEngineUpdatingState(true)
+    hasTriggeredReloadRef.current = false
     try {
       const initialStatus = await triggerEngineUpdate({
         target_version: targetVersion,
         download_url: downloadUrl,
       })
-      setProgress(initialStatus)
+      updateProgress(initialStatus)
 
       stopPolling()
       let isRequestInFlight = false
@@ -105,7 +122,7 @@ export function useAutoUpdater() {
             return
           }
 
-          setProgress(status)
+          updateProgress(status)
 
           if (status.phase === 'restarting') {
             stopPolling()
@@ -119,21 +136,19 @@ export function useAutoUpdater() {
           }
         } catch {
           // If status fetch fails while phase was applying/downloading, engine likely restarted
-          setProgress(prev => {
-            if (prev && (prev.phase === 'applying' || prev.phase === 'restarting' || prev.percent >= 95)) {
-              stopPolling()
-              startReconnectWatcher(prev.target_version || targetVersion, currentVersion)
-              return { ...prev, phase: 'restarting', percent: 100, message: 'Restarting local engine...' }
-            }
-            return prev
-          })
+          const prev = latestProgressRef.current
+          if (prev && (prev.phase === 'applying' || prev.phase === 'restarting' || prev.percent >= 95)) {
+            stopPolling()
+            updateProgress({ ...prev, phase: 'restarting', percent: 100, message: 'Restarting local engine...' })
+            startReconnectWatcher(prev.target_version || targetVersion, currentVersion)
+          }
         } finally {
           isRequestInFlight = false
         }
       }, 750)
     } catch (err: any) {
       setEngineUpdatingState(false)
-      setProgress({
+      updateProgress({
         phase: 'error',
         downloaded_bytes: 0,
         total_bytes: 0,
@@ -143,7 +158,7 @@ export function useAutoUpdater() {
         error: err?.message || 'Unknown error',
       })
     }
-  }, [stopPolling, startReconnectWatcher])
+  }, [stopPolling, startReconnectWatcher, updateProgress])
 
   useEffect(() => {
     let isMounted = true

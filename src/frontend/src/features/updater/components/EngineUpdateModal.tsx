@@ -140,7 +140,18 @@ export function EngineUpdateModal() {
           </div>
         )}
 
-        {!isError && (
+        {isCompleted && (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="w-full min-h-[42px] rounded-full bg-[#0B7A5A] hover:bg-[#09664B] text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Reload Dashboard</span>
+          </button>
+        )}
+
+        {!isError && !isCompleted && (
           <p className="text-[11px] text-center text-[#4F5C57] dark:text-slate-400">
             Please keep this tab open. Your study session will reload automatically in a moment.
           </p>
