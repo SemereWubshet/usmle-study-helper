@@ -21,7 +21,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           
           <div className="flex items-center space-x-2 sm:space-x-6">
             <Link to="/" className="flex items-center space-x-2.5 text-[#0B7A5A] dark:text-emerald-400 font-semibold tracking-tight whitespace-nowrap text-[16px]">
-              <img src="/usmle.svg" alt="USMLE Logo" className="w-5 h-5 shrink-0" />
+              <img src="/usmle.svg" alt="USMLE Logo" className="w-6 h-6 shrink-0" />
               <span className="hidden lg:inline">USMLE Study Helper</span>
               <span className="hidden md:inline lg:hidden">USMLE Study</span>
               <span className="md:hidden font-extrabold text-sm">USMLE</span>

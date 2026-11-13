@@ -110,6 +110,8 @@ export default function History() {
       navigate('/session', {
         state: {
           sessionData: data,
+          isReviewMode: false,
+          isNewSession: true,
         },
       })
     },

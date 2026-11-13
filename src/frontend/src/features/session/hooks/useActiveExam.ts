@@ -101,7 +101,11 @@ export function useActiveExam({ sessionData, isReviewMode, onEnterReviewMode }: 
   const finishSession = () => {
     if (sessionData?.session_id) {
       completeSession(sessionData.session_id).catch(() => {})
-      localStorage.setItem(`usmle_session_is_review_${sessionData.session_id}`, 'true')
+      localStorage.removeItem('usmle_active_session')
+      localStorage.removeItem(`usmle_session_progress_${sessionData.session_id}`)
+      localStorage.removeItem(`usmle_session_attempts_${sessionData.session_id}`)
+      localStorage.removeItem(`usmle_session_is_review_${sessionData.session_id}`)
+      localStorage.removeItem(`usmle_session_timer_${sessionData.session_id}`)
     }
     onEnterReviewMode()
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })

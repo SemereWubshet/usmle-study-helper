@@ -70,7 +70,7 @@ export default function Dashboard() {
         },
       }
     },
-    onSuccess: (data) => navigate('/session', { state: { sessionData: data } }),
+    onSuccess: (data) => navigate('/session', { state: { sessionData: data, isReviewMode: false, isNewSession: true } }),
   })
 
   // Subject Selection Logic

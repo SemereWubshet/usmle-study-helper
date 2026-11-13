@@ -85,7 +85,7 @@ export function ReviewQuestionDetail({
           const wasChosen = attempt?.selectedOption === optIdx
           const wasCorrect = attempt?.correctOption === optIdx
 
-          let buttonStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900/40 text-slate-400 dark:text-slate-500 opacity-60'
+          let buttonStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200'
           let badgeStyle = 'bg-[#EDF0EE] dark:bg-slate-800 text-[#1E2B27] dark:text-white'
           let statusBadge = null
 
@@ -116,13 +116,13 @@ export function ReviewQuestionDetail({
           return (
             <div
               key={optIdx}
-              className={`w-full text-left p-3.5 sm:p-4 rounded-[18px] transition-all flex items-center justify-between gap-3.5 min-h-[58px] ${buttonStyle}`}
+              className={`w-full text-left p-3.5 sm:p-4 rounded-[18px] transition-all flex items-start justify-between gap-3.5 min-h-[58px] ${buttonStyle}`}
             >
-              <div className="flex items-center gap-3.5 flex-1 min-w-0">
+              <div className="flex items-start gap-3.5 flex-1 min-w-0">
                 <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px] shrink-0 select-none ${badgeStyle}`}>
                   {String.fromCharCode(65 + optIdx)}
                 </span>
-                <span className="text-[16px] leading-relaxed select-text truncate">
+                <span className="text-[16px] leading-relaxed select-text break-words pt-0.5">
                   {optText}
                 </span>
               </div>

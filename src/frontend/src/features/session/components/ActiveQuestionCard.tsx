@@ -97,7 +97,7 @@ export function ActiveQuestionCard({
                   </span>
                 )
               } else {
-                buttonStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-950/40 text-slate-400 dark:text-slate-500 opacity-60'
+                buttonStyle = 'border border-[#E3E8E5] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#1E2B27] dark:text-slate-200'
               }
             } else if (isSelected) {
               buttonStyle = 'border-2 border-[#0B7A5A] bg-[#E3F2EA]/40 dark:bg-emerald-950/30 text-[#0B5F46] dark:text-emerald-300 font-medium'
@@ -111,15 +111,15 @@ export function ActiveQuestionCard({
                 onClick={() => onSelectOption(idx)}
                 onContextMenu={(e) => onToggleStrike(e, idx)}
                 disabled={Boolean(attemptResult && examMode === 'tutor')}
-                className={`w-full text-left p-3.5 sm:p-4 rounded-[18px] transition-all flex items-center justify-between gap-3.5 cursor-pointer min-h-[58px] ${buttonStyle} ${
+                className={`w-full text-left p-3.5 sm:p-4 rounded-[18px] transition-all flex items-start justify-between gap-3.5 cursor-pointer min-h-[58px] ${buttonStyle} ${
                   isStruck && !attemptResult ? 'line-through opacity-40 text-slate-400' : ''
                 }`}
               >
-                <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                <div className="flex items-start gap-3.5 flex-1 min-w-0">
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px] shrink-0 select-none shadow-2xs ${badgeStyle}`}>
                     {String.fromCharCode(65 + idx)}
                   </span>
-                  <span className="text-[16px] font-medium leading-relaxed select-text truncate">
+                  <span className="text-[16px] font-medium leading-relaxed select-text break-words pt-0.5">
                     {optText}
                   </span>
                 </div>

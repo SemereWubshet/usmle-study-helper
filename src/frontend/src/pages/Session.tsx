@@ -23,6 +23,17 @@ export {
 } from '@/features/session/types'
 export type { StoredAttempt } from '@/features/session/types'
 
+function clearSessionLocalStorage(sessionId?: number | null) {
+  localStorage.removeItem('usmle_active_session')
+  if (sessionId) {
+    localStorage.removeItem(`usmle_session_progress_${sessionId}`)
+    localStorage.removeItem(`usmle_session_attempts_${sessionId}`)
+    localStorage.removeItem(`usmle_session_is_review_${sessionId}`)
+    localStorage.removeItem(`usmle_session_notes_${sessionId}`)
+    localStorage.removeItem(`usmle_session_timer_${sessionId}`)
+  }
+}
+
 export default function Session() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -30,6 +41,9 @@ export default function Session() {
   // Retrieve session block from location.state or localStorage
   const [sessionData] = useState(() => {
     if (location.state?.sessionData) {
+      if (location.state?.isNewSession) {
+        clearSessionLocalStorage(location.state.sessionData.session_id)
+      }
       localStorage.setItem('usmle_active_session', JSON.stringify(location.state.sessionData))
       return location.state.sessionData
     }
@@ -177,15 +191,17 @@ export default function Session() {
     currentOptions
   )
 
-  const handleFinishReview = () => {
-    if (sessionData?.session_id) {
-      localStorage.removeItem('usmle_active_session')
-      localStorage.removeItem(`usmle_session_progress_${sessionData.session_id}`)
-      localStorage.removeItem(`usmle_session_attempts_${sessionData.session_id}`)
-      localStorage.removeItem(`usmle_session_is_review_${sessionData.session_id}`)
-      localStorage.removeItem(`usmle_session_notes_${sessionData.session_id}`)
-      localStorage.removeItem(`usmle_session_timer_${sessionData.session_id}`)
+  // Clean up localStorage if user navigates away from a completed/review session via navbar
+  useEffect(() => {
+    return () => {
+      if (isReviewMode && sessionData?.session_id) {
+        clearSessionLocalStorage(sessionData.session_id)
+      }
     }
+  }, [isReviewMode, sessionData?.session_id])
+
+  const handleFinishReview = () => {
+    clearSessionLocalStorage(sessionData?.session_id)
     navigate('/')
   }
 

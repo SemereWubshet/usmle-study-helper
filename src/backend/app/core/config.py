@@ -7,7 +7,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 
 LAST_HEARTBEAT = time.time()
 WATCHDOG_TIMEOUT_SECONDS = 300
@@ -111,7 +111,8 @@ def watchdog_worker():
                 os.kill(os.getpid(), signal.SIGTERM)
             else:
                 os.kill(os.getpid(), signal.SIGINT)
-            break
+            time.sleep(3)
+            os._exit(0)
 
 
 @asynccontextmanager
