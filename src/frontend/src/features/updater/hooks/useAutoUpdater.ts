@@ -9,6 +9,27 @@ import {
   type UpdateProgressResponse,
 } from '../api'
 
+function parseSemver(v: string): number[] {
+  return v
+    .replace(/^[^0-9]*/, '')
+    .split(/[^0-9]+/)
+    .filter(Boolean)
+    .map(n => parseInt(n, 10))
+}
+
+function isSameOrNewer(current: string, target: string): boolean {
+  const pCurr = parseSemver(current)
+  const pTarg = parseSemver(target)
+  const len = Math.max(pCurr.length, pTarg.length)
+  for (let i = 0; i < len; i++) {
+    const a = pCurr[i] ?? 0
+    const b = pTarg[i] ?? 0
+    if (a > b) return true
+    if (a < b) return false
+  }
+  return true
+}
+
 export function useAutoUpdater() {
   const [checkInfo, setCheckInfo] = useState<UpdateCheckResponse | null>(null)
   const [progress, setProgress] = useState<UpdateProgressResponse | null>(null)
@@ -32,7 +53,7 @@ export function useAutoUpdater() {
     }
   }, [])
 
-  const startReconnectWatcher = useCallback((expectedVersion?: string | null) => {
+  const startReconnectWatcher = useCallback((expectedVersion?: string | null, initialVersion?: string | null) => {
     setIsWaitingForReconnect(true)
     stopReconnectPolling()
 
@@ -40,16 +61,18 @@ export function useAutoUpdater() {
       try {
         const health = await checkEngineHealth()
         if (health.status === 'healthy') {
-          const cleanHealthVer = health.version.replace(/^v/, '')
-          const cleanExpected = expectedVersion?.replace(/^v/, '')
-          if (!cleanExpected || cleanHealthVer === cleanExpected) {
+          const isUpgraded =
+            (expectedVersion && isSameOrNewer(health.version, expectedVersion)) ||
+            (initialVersion && health.version.replace(/^v/, '') !== initialVersion.replace(/^v/, ''))
+
+          if (!expectedVersion || isUpgraded) {
             stopReconnectPolling()
             setIsWaitingForReconnect(false)
             setEngineUpdatingState(false)
             setProgress(prev => prev ? { ...prev, phase: 'completed', percent: 100, message: `Updated to v${health.version}! Reloading...` } : null)
             setTimeout(() => {
               window.location.reload()
-            }, 900)
+            }, 800)
           }
         }
       } catch {
@@ -58,7 +81,7 @@ export function useAutoUpdater() {
     }, 800)
   }, [stopReconnectPolling])
 
-  const beginUpdate = useCallback(async (targetVersion?: string, downloadUrl?: string) => {
+  const beginUpdate = useCallback(async (targetVersion?: string, downloadUrl?: string, currentVersion?: string) => {
     setEngineUpdatingState(true)
     try {
       const initialStatus = await triggerEngineUpdate({
@@ -74,11 +97,19 @@ export function useAutoUpdater() {
         isRequestInFlight = true
         try {
           const status = await fetchUpdaterStatus()
+
+          // If the new engine already booted up, its updater status is reset to 'idle'!
+          if (status.phase === 'idle') {
+            stopPolling()
+            startReconnectWatcher(targetVersion, currentVersion)
+            return
+          }
+
           setProgress(status)
 
           if (status.phase === 'restarting') {
             stopPolling()
-            startReconnectWatcher(status.target_version || targetVersion)
+            startReconnectWatcher(status.target_version || targetVersion, currentVersion)
           } else if (status.phase === 'completed') {
             stopPolling()
             setEngineUpdatingState(false)
@@ -91,7 +122,7 @@ export function useAutoUpdater() {
           setProgress(prev => {
             if (prev && (prev.phase === 'applying' || prev.phase === 'restarting' || prev.percent >= 95)) {
               stopPolling()
-              startReconnectWatcher(prev.target_version || targetVersion)
+              startReconnectWatcher(prev.target_version || targetVersion, currentVersion)
               return { ...prev, phase: 'restarting', percent: 100, message: 'Restarting local engine...' }
             }
             return prev
@@ -132,7 +163,7 @@ export function useAutoUpdater() {
           const comp = result.components[0]
           const mockUrl = localStorage.getItem('usmle_mock_download_url') || urlParams.get('mockUrl')
           const downloadUrl = mockUrl || comp?.download_url
-          await beginUpdate(result.latest_version, downloadUrl)
+          await beginUpdate(result.latest_version, downloadUrl, result.current_version)
         }
       } catch {
         // Ignore if engine is older and lacks /api/v1/updater/check or user is offline
@@ -150,7 +181,7 @@ export function useAutoUpdater() {
 
   const retryUpdate = useCallback(() => {
     const comp = checkInfo?.components[0]
-    beginUpdate(checkInfo?.latest_version, comp?.download_url)
+    beginUpdate(checkInfo?.latest_version, comp?.download_url, checkInfo?.current_version)
   }, [checkInfo, beginUpdate])
 
   const dismiss = useCallback(() => {

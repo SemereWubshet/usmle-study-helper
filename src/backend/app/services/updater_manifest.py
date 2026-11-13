@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 import httpx
@@ -49,14 +50,18 @@ def get_local_binary_path() -> Path:
 
 def cleanup_old_updates() -> None:
     """Removes leftover .old or .new update files from previous runs on startup."""
-    try:
-        exe_path = get_local_binary_path()
-        for suffix in (".old", ".new"):
-            candidate = exe_path.with_name(exe_path.name + suffix)
-            if candidate.exists():
+    exe_path = get_local_binary_path()
+    for suffix in (".old", ".new"):
+        candidate = exe_path.with_name(exe_path.name + suffix)
+        if not candidate.exists():
+            continue
+        # On Windows, the old --onefile bootloader stub may take ~0.5s to release the .old lock
+        for _ in range(6):
+            try:
                 candidate.unlink(missing_ok=True)
-    except Exception:
-        pass
+                break
+            except Exception:
+                time.sleep(0.25)
 
 
 def check_for_updates(simulated_version: Optional[str] = None) -> UpdateCheckResponse:
